@@ -1,0 +1,54 @@
+openapi: 3.0.0
+info:
+    title: ParamsAndBody
+    version: "1.0.0"
+paths:
+    /accounts/{accountId}/transactions:
+        post:
+            parameters:
+                - name: accountId
+                  in: path
+                  required: true
+                  description: Account identifier
+                  schema: { type: string }
+                - name: limit
+                  in: query
+                  required: false
+                  schema: { type: integer }
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required: [dateFrom, dateTo]
+                            properties:
+                                dateFrom: { type: string, format: date }
+                                dateTo: { type: string, format: date }
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    transactions:
+                                        type: array
+                                        items:
+                                            type: object
+                                            properties:
+                                                id: { type: string }
+                                                amount: { type: number }
+    /raw:
+        post:
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: string
+                            format: binary
+            responses:
+                "200":
+                    description: OK

@@ -1,0 +1,19 @@
+openapi: 3.0.0
+info:
+    title: ArrayResponse
+    version: "1.0.0"
+paths:
+    /clients:
+        get:
+            responses:
+                "200":
+                    description: A list of clients
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    type: object
+                                    properties:
+                                        id: { type: string }
+                                        name: { type: string }

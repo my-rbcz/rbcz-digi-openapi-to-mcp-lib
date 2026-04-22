@@ -1,0 +1,21 @@
+openapi: 3.0.0
+info:
+    title: Minimal
+    version: "1.0.0"
+servers:
+    - url: https://api.example.com
+paths:
+    /ping:
+        get:
+            operationId: ping
+            summary: Health check
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    ok:
+                                        type: boolean

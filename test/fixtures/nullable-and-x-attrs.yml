@@ -1,0 +1,30 @@
+openapi: 3.0.0
+info:
+    title: NullableAndXAttrs
+    version: "1.0.0"
+paths:
+    /cards:
+        get:
+            responses:
+                "200":
+                    description: Cards
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                x-example: dummy
+                                properties:
+                                    cardId:
+                                        type: string
+                                    cardType:
+                                        type: string
+                                        x-catalog: DebitCardType
+                                    distributionDate:
+                                        type: string
+                                        format: date
+                                        nullable: true
+                                    meta:
+                                        type: object
+                                        x-asd-attribute: yes
+                                        properties:
+                                            note: { type: string }
