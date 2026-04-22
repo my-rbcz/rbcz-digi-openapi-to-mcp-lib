@@ -9,7 +9,7 @@ of an MCP server:
 - Path-aware catalog mappings + response translation.
 - AJV-backed response validation.
 
-Implementation blueprint is in `../plan.md`. This package does **not** perform I/O (no S3,
+This package does **not** perform I/O (no S3,
 no HTTP, no filesystem), does **not** run an MCP server, and does **not** cache anything
 — callers supply the spec content, the HTTP client, and the catalog lookup function.
 
