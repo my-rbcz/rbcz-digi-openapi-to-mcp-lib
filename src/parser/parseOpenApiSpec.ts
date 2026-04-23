@@ -1,5 +1,5 @@
 import type { OpenAPIV3 } from "openapi-types";
-import { OpenApiParseError, noopLogger } from "../errors.js";
+import { OpenApiParseError, describeError, noopLogger } from "../errors.js";
 import type { Logger, ParsedSpec } from "../types.js";
 import { normalizeSpecContent } from "./normalizeSpecContent.js";
 import { parseSpecContent } from "./parseSpecContent.js";
@@ -38,7 +38,7 @@ export async function parseOpenApiSpec(input: SpecInput, options: ParseOptions =
             fullDocument: api,
         };
     } catch (error) {
-        throw new OpenApiParseError(`Failed to extract endpoints: ${describe(error)}`, "extract", error);
+        throw new OpenApiParseError(`Failed to extract endpoints: ${describeError(error)}`, "extract", error);
     }
 }
 
@@ -50,10 +50,6 @@ function resolveInput(input: SpecInput): unknown {
         return input;
     }
     throw new OpenApiParseError("Spec input must be a string or an object", "parse");
-}
-
-function describe(err: unknown): string {
-    return err instanceof Error ? err.message : String(err);
 }
 
 // Re-export for consumers that want the OpenAPIV3 type without importing it directly.

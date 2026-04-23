@@ -22,6 +22,10 @@ export class SchemaFilterError extends Error {
     }
 }
 
+export function describeError(err: unknown): string {
+    return err instanceof Error ? err.message : String(err);
+}
+
 export function noopLogger() {
     return {
         debug: () => undefined,

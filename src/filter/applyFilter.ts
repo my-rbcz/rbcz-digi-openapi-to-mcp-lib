@@ -1,5 +1,5 @@
 import type { SchemaFilterDefinition } from "../types.js";
-import { SchemaFilterError } from "../errors.js";
+import { SchemaFilterError, describeError } from "../errors.js";
 import { filterArray } from "./filterArray.js";
 import { filterObject } from "./filterObject.js";
 
@@ -26,7 +26,7 @@ export function applyFilter(data: unknown, filter: SchemaFilterDefinition, optio
         return walk(data, filter, filter.responseSchema);
     } catch (error) {
         if (mode === "passthrough") return data;
-        throw new SchemaFilterError(`Failed to filter data for ${filter.backend}:${filter.protocol}:${filter.operation}: ${describe(error)}`, error);
+        throw new SchemaFilterError(`Failed to filter data for ${filter.backend}:${filter.protocol}:${filter.operation}: ${describeError(error)}`, error);
     }
 }
 
@@ -42,8 +42,4 @@ function walk(data: unknown, filter: SchemaFilterDefinition, schema: unknown): u
     }
 
     return data;
-}
-
-function describe(err: unknown): string {
-    return err instanceof Error ? err.message : String(err);
 }

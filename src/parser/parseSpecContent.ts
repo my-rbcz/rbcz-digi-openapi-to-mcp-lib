@@ -1,5 +1,5 @@
 import yaml from "js-yaml";
-import { OpenApiParseError } from "../errors.js";
+import { OpenApiParseError, describeError } from "../errors.js";
 
 /**
  * Parse a normalized spec string as JSON first, then YAML as a fallback.
@@ -19,13 +19,9 @@ function parseAsYaml(content: string, jsonError: unknown): unknown {
         return yaml.load(content);
     } catch (yamlError) {
         throw new OpenApiParseError(
-            `Failed to parse spec as JSON or YAML. JSON error: ${describe(jsonError)}. YAML error: ${describe(yamlError)}`,
+            `Failed to parse spec as JSON or YAML. JSON error: ${describeError(jsonError)}. YAML error: ${describeError(yamlError)}`,
             "parse",
             yamlError
         );
     }
-}
-
-function describe(err: unknown): string {
-    return err instanceof Error ? err.message : String(err);
 }

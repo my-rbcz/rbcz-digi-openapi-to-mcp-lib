@@ -1,5 +1,5 @@
 import type { CatalogMappings, CodeLookup } from "../types.js";
-import { SchemaFilterError } from "../errors.js";
+import { SchemaFilterError, describeError } from "../errors.js";
 import { translateData } from "./translateData.js";
 import type { ApplyFilterOptions } from "./applyFilter.js";
 
@@ -16,10 +16,6 @@ export function applyTranslations(data: unknown, mappings: CatalogMappings, look
         return translateData(data, mappings, lookup);
     } catch (error) {
         if (mode === "passthrough") return data;
-        throw new SchemaFilterError(`Failed to translate data: ${describe(error)}`, error);
+        throw new SchemaFilterError(`Failed to translate data: ${describeError(error)}`, error);
     }
-}
-
-function describe(err: unknown): string {
-    return err instanceof Error ? err.message : String(err);
 }

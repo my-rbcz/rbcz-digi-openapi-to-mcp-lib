@@ -1,6 +1,6 @@
 import SwaggerParser from "@apidevtools/swagger-parser";
 import type { OpenAPIV3 } from "openapi-types";
-import { OpenApiParseError } from "../errors.js";
+import { OpenApiParseError, describeError } from "../errors.js";
 
 /**
  * Dereference all $ref pointers in an OpenAPI document. This is intentionally
@@ -16,10 +16,6 @@ export async function dereferenceSpec(parsed: unknown): Promise<OpenAPIV3.Docume
         const api = (await SwaggerParser.dereference(cloned)) as OpenAPIV3.Document;
         return api;
     } catch (error) {
-        throw new OpenApiParseError(`Failed to dereference OpenAPI spec: ${describe(error)}`, "dereference", error);
+        throw new OpenApiParseError(`Failed to dereference OpenAPI spec: ${describeError(error)}`, "dereference", error);
     }
-}
-
-function describe(err: unknown): string {
-    return err instanceof Error ? err.message : String(err);
 }
