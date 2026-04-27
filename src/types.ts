@@ -67,6 +67,24 @@ export interface SchemaFilterDefinition {
 }
 
 /**
+ * Filter definition for the AJV-based stripper. Parallel to
+ * `SchemaFilterDefinition` but without `allowedFields` — `applyAjvFilter`
+ * derives stripping behaviour structurally from `responseSchema` via AJV's
+ * `removeAdditional: "all"`.
+ *
+ * `responseSchema` holds the original (post-deref) schema so callers can
+ * still pass it to `extractCatalogMappings`, exactly as with the legacy
+ * filter type.
+ */
+export interface AjvFilterDefinition {
+    backend: string;
+    protocol: Protocol;
+    operation: string;
+    responseSchema: unknown;
+    description?: string;
+}
+
+/**
  * Mapping from dot-notation JSON path to catalog name.
  * Example: { "currencyFolders.status": "CURRENCYFOLDERSTATUS" }
  */

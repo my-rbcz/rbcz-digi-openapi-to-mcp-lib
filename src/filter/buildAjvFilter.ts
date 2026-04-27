@@ -1,8 +1,7 @@
-import type { Endpoint, Protocol, SchemaFilterDefinition } from "../types.js";
-import { extractAllowedFields } from "./extractAllowedFields.js";
+import type { AjvFilterDefinition, Endpoint, Protocol } from "../types.js";
 import { pickResponseSchema, pascalizePath } from "./responseSchemaUtils.js";
 
-export interface BuildSchemaFilterOptions {
+export interface BuildAjvFilterOptions {
     endpoint: Endpoint;
     backend: string;
     protocol: Protocol;
@@ -10,30 +9,29 @@ export interface BuildSchemaFilterOptions {
 }
 
 /**
- * Build a SchemaFilterDefinition from a single endpoint's 200 response.
+ * Build an AjvFilterDefinition from a single endpoint's 200 response.
  *
  * Returns null when:
  *   - there is no 200 response, or
- *   - the 200 response has no application/json schema, or
- *   - the schema yields no allowed fields (typically an unresolved $ref).
+ *   - the 200 response has no application/json schema.
+ *
+ * Unlike `buildSchemaFilter`, this builder does NOT inspect the schema's
+ * field set — AJV decides what to keep at runtime via `removeAdditional`.
  *
  * Catalog mappings are NOT computed here — call `extractCatalogMappings`
- * on the resulting `responseSchema` when you need them.
+ * on the resulting `responseSchema` when you need them, exactly as you
+ * would with `buildSchemaFilter`.
  */
-export function buildSchemaFilter(options: BuildSchemaFilterOptions): SchemaFilterDefinition | null {
+export function buildAjvFilter(options: BuildAjvFilterOptions): AjvFilterDefinition | null {
     const { endpoint, backend, protocol, description } = options;
 
     const responseSchema = pickResponseSchema(endpoint);
     if (!responseSchema) return null;
 
-    const allowedFields = extractAllowedFields(responseSchema);
-    if (allowedFields.length === 0) return null;
-
     return {
         backend,
         protocol,
         operation: endpoint.path ? endpoint.method.toLowerCase() + pascalizePath(endpoint.path) : "",
-        allowedFields,
         responseSchema,
         description,
     };

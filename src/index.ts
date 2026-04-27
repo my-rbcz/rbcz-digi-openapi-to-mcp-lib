@@ -8,6 +8,7 @@ export type {
     HttpMethod,
     MCPToolDefinition,
     SchemaFilterDefinition,
+    AjvFilterDefinition,
     FilterContext,
     CatalogMappings,
     CodeLookup,
@@ -40,13 +41,20 @@ export { transformNullableSchema } from "./schema/transformNullableSchema.js";
 export { extractCatalogNames } from "./catalog/extractCatalogNames.js";
 export { extractCatalogMappings } from "./catalog/extractCatalogMappings.js";
 
-// ─── Filtering ────────────────────────────────────────────────────────
+// ─── Filtering (legacy, allowedFields-based) ──────────────────────────
 export { buildSchemaFilter } from "./filter/buildSchemaFilter.js";
 export type { BuildSchemaFilterOptions } from "./filter/buildSchemaFilter.js";
 export { applyFilter } from "./filter/applyFilter.js";
 export type { ApplyFilterOptions, FilterErrorMode } from "./filter/applyFilter.js";
 export { applyTranslations } from "./filter/applyTranslations.js";
 export { SchemaFilterRegistry } from "./filter/SchemaFilterRegistry.js";
+
+// ─── Filtering (AJV-based, parallel) ──────────────────────────────────
+export { buildAjvFilter } from "./filter/buildAjvFilter.js";
+export type { BuildAjvFilterOptions } from "./filter/buildAjvFilter.js";
+export { applyAjvFilter } from "./filter/applyAjvFilter.js";
+export type { ApplyAjvFilterOptions } from "./filter/applyAjvFilter.js";
+export { AjvFilterRegistry } from "./filter/AjvFilterRegistry.js";
 
 // ─── Validation ───────────────────────────────────────────────────────
 export { ResponseValidator } from "./validation/ResponseValidator.js";

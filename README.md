@@ -78,9 +78,52 @@ const catalogs = extractCatalogNames(spec.fullDocument);
 | `cleanSchema` / `transformNullableSchema` | Pure schema utilities — drop `x-*`, convert OpenAPI `nullable: true` to JSON-Schema union types. |
 | `extractCatalogNames` / `extractCatalogMappings` | Collect `x-catalog` references flat or as path-aware mappings. |
 | `buildSchemaFilter` / `applyFilter` | Derive a `SchemaFilterDefinition` from an endpoint, then filter arbitrary response data. |
+| `buildAjvFilter` / `applyAjvFilter` | AJV-based parallel of the above (0.2.0+). See [Two filtering paths](#two-filtering-paths-020). |
 | `applyTranslations` | Translate codes in-place using a caller-supplied `CodeLookup`. |
-| `SchemaFilterRegistry` | In-memory filter storage keyed by `${backend}:${protocol}:${operation}`. |
+| `SchemaFilterRegistry` / `AjvFilterRegistry` | In-memory filter storage keyed by `${backend}:${protocol}:${operation}`. Same key shape so both registries stay in sync. |
 | `ResponseValidator` | AJV-backed, non-throwing response validator with per-tool compile cache. |
+
+## Two filtering paths (0.2.0+)
+
+Two response strippers ship side by side:
+
+- **`applyFilter`** — original walker. Structural where it can be, falls
+  back to a flat `allowedFields` set elsewhere. Stable; default.
+- **`applyAjvFilter`** — AJV with `removeAdditional: true`, driven by a
+  schema-rewrite pass that injects `additionalProperties: false` on every
+  plain object node (without disturbing `additionalProperties: <schema>`
+  dynamic maps). Strictly structural at every depth.
+
+Both are built from the same `Endpoint` and share the same operation-key
+shape, so the two registries can be populated from one loop and queried
+identically. Both are compatible with `extractCatalogMappings` +
+`applyTranslations`.
+
+```ts
+import { buildAjvFilter, applyAjvFilter, AjvFilterRegistry } from "rbcz-digi-openapi-to-mcp-lib";
+
+const ajvRegistry = new AjvFilterRegistry();
+for (const endpoint of spec.endpoints) {
+    const f = buildAjvFilter({ endpoint, backend: "mch", protocol: "mcp" });
+    if (f) ajvRegistry.add(f);
+}
+
+const f = ajvRegistry.get("mch", "mcp", "getDebitcards")!;
+const filtered = applyAjvFilter(responseData, f);
+```
+
+**Known limitation:** combinator branches (`oneOf` / `anyOf` / `allOf`)
+pass through unfiltered — locking each branch with
+`additionalProperties: false` would cause AJV to validate every branch
+and strip any field absent from any branch, including fields the
+matching branch legitimately allows. This matches the legacy walker's
+behaviour, which doesn't recurse into combinators either. See
+`src/filter/prepareSchemaForAjv.ts`.
+
+A parity test (`test/filter/parity.test.ts`) runs both filters on every
+fixture endpoint and asserts identical output. Use it as a template for
+asserting parity on your own production-shaped payloads before switching
+over.
 
 ## Notable behaviour
 

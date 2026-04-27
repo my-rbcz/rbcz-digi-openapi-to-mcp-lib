@@ -5,7 +5,9 @@
       "Bash(npx vitest *)",
       "Bash(pnpm tsc-check *)",
       "Bash(pnpm test *)",
-      "Bash(pnpm eslint *)"
+      "Bash(pnpm eslint *)",
+      "Bash(pnpm vitest *)",
+      "Bash(pnpm coverage *)"
     ]
   }
 }
