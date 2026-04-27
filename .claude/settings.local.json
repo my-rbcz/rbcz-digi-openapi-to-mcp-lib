@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(pnpm build *)",
-      "Bash(npx vitest *)"
+      "Bash(npx vitest *)",
+      "Bash(pnpm tsc-check *)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm eslint *)"
     ]
   }
 }

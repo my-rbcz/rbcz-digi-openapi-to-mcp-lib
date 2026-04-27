@@ -8,7 +8,6 @@ const baseFilter: SchemaFilterDefinition = {
     operation: "getX",
     allowedFields: ["id"],
     responseSchema: {},
-    catalogMappings: {},
 };
 
 describe("SchemaFilterRegistry", () => {

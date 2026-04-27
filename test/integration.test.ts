@@ -6,6 +6,7 @@ import { applyFilter } from "../src/filter/applyFilter.js";
 import { applyTranslations } from "../src/filter/applyTranslations.js";
 import { ResponseValidator } from "../src/validation/ResponseValidator.js";
 import { extractCatalogNames } from "../src/catalog/extractCatalogNames.js";
+import { extractCatalogMappings } from "../src/catalog/extractCatalogMappings.js";
 import { loadFixture } from "./fixtures/loadFixture.js";
 
 describe("end-to-end pipeline", () => {
@@ -19,7 +20,9 @@ describe("end-to-end pipeline", () => {
 
         const filter = buildSchemaFilter({ endpoint, backend: "mch", protocol: "mcp" });
         expect(filter).not.toBeNull();
-        expect(filter!.catalogMappings).toEqual({ "currencyFolders.status": "CURRENCYFOLDERSTATUS" });
+
+        const catalogMappings = extractCatalogMappings(filter!.responseSchema);
+        expect(catalogMappings).toEqual({ "currencyFolders.status": "CURRENCYFOLDERSTATUS" });
 
         const rawResponse = {
             status: "1",
@@ -33,7 +36,7 @@ describe("end-to-end pipeline", () => {
         expect(filtered.shouldBeStripped).toBeUndefined();
         expect(filtered.currencyFolders.CZK.junk).toBeUndefined();
 
-        const translated = applyTranslations(filtered, filter!.catalogMappings, (catalog, v) => `${catalog}#${v}`) as any;
+        const translated = applyTranslations(filtered, catalogMappings, (catalog, v) => `${catalog}#${v}`) as any;
         // root status has no mapping → untouched
         expect(translated.status).toBe("1");
         // nested statuses get translated via parent-path fallback

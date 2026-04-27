@@ -63,7 +63,6 @@ export interface SchemaFilterDefinition {
     operation: string;
     allowedFields: string[];
     responseSchema: unknown;
-    catalogMappings: CatalogMappings;
     description?: string;
 }
 

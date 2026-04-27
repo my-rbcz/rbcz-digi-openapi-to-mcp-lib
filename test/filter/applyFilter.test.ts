@@ -10,7 +10,6 @@ function filter(overrides: Partial<SchemaFilterDefinition> = {}): SchemaFilterDe
         operation: "getX",
         allowedFields: [],
         responseSchema: undefined,
-        catalogMappings: {},
         ...overrides,
     };
 }

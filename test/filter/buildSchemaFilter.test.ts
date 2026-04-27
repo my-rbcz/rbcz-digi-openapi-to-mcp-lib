@@ -21,7 +21,7 @@ describe("buildSchemaFilter", () => {
         expect(filter).toBeNull();
     });
 
-    it("builds a filter with allowedFields, mappings, and a tool-name operation", () => {
+    it("builds a filter with allowedFields and a tool-name operation", () => {
         const filter = buildSchemaFilter({
             endpoint: endpoint(
                 {
@@ -49,7 +49,7 @@ describe("buildSchemaFilter", () => {
         expect(filter).not.toBeNull();
         expect(filter!.operation).toBe("getAccounts");
         expect(filter!.allowedFields.sort()).toEqual(["id", "status"]);
-        expect(filter!.catalogMappings).toEqual({ status: "STATUS" });
         expect(filter!.description).toBe("auto");
+        expect(filter).not.toHaveProperty("catalogMappings");
     });
 });

@@ -1,6 +1,5 @@
 import type { Endpoint, Protocol, SchemaFilterDefinition } from "../types.js";
 import { extractAllowedFields } from "./extractAllowedFields.js";
-import { extractCatalogMappings } from "../catalog/extractCatalogMappings.js";
 
 export interface BuildSchemaFilterOptions {
     endpoint: Endpoint;
@@ -16,6 +15,9 @@ export interface BuildSchemaFilterOptions {
  *   - there is no 200 response, or
  *   - the 200 response has no application/json schema, or
  *   - the schema yields no allowed fields (typically an unresolved $ref).
+ *
+ * Catalog mappings are NOT computed here — call `extractCatalogMappings`
+ * on the resulting `responseSchema` when you need them.
  */
 export function buildSchemaFilter(options: BuildSchemaFilterOptions): SchemaFilterDefinition | null {
     const { endpoint, backend, protocol, description } = options;
@@ -26,15 +28,12 @@ export function buildSchemaFilter(options: BuildSchemaFilterOptions): SchemaFilt
     const allowedFields = extractAllowedFields(responseSchema);
     if (allowedFields.length === 0) return null;
 
-    const catalogMappings = extractCatalogMappings(responseSchema);
-
     return {
         backend,
         protocol,
         operation: endpoint.path ? endpoint.method.toLowerCase() + pascalizePath(endpoint.path) : "",
         allowedFields,
         responseSchema,
-        catalogMappings,
         description,
     };
 }

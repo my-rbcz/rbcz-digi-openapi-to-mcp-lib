@@ -34,6 +34,7 @@ import {
     ResponseValidator,
     SchemaFilterRegistry,
     extractCatalogNames,
+    extractCatalogMappings,
 } from "rbcz-digi-openapi-to-mcp-lib";
 
 // 1. Parse — takes a string (JSON/YAML) or a pre-parsed object.
@@ -53,8 +54,10 @@ for (const endpoint of spec.endpoints) {
 const filter = registry.get("mch", "mcp", "getDebitcards")!;
 const filtered = applyFilter(responseData, filter);
 
-// 5. Translate codes via your caller-supplied lookup function.
-const translated = applyTranslations(filtered, filter.catalogMappings, (catalog, value) =>
+// 5. Extract catalog mappings as a standalone step, then translate codes
+//    via your caller-supplied lookup function.
+const catalogMappings = extractCatalogMappings(filter.responseSchema);
+const translated = applyTranslations(filtered, catalogMappings, (catalog, value) =>
     myCatalogLookup(catalog, value)
 );
 
