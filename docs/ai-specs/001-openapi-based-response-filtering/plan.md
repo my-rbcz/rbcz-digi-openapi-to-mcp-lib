@@ -1,69 +1,149 @@
-# Implementation plan — AJV-based response filtering
+# Implementation plan — AJV-based response filtering (parallel rollout)
 
 See `research.md` for the motivation. This plan turns the recommendation into
-concrete, reviewable steps.
+the smallest possible, reviewable change.
 
 ## Goal
 
-Replace the hand-written structural walker (`extractAllowedFields` + the
+Add an AJV-based response stripper **alongside** the existing hand-written
+walker (`extractAllowedFields` + the
 `applyFilter` / `filterObject` / `filterArray` / `filterDynamicObject`
-family) with an AJV-based stripper driven directly by the OpenAPI response
-schema.
+family). The two implementations live in parallel so callers can:
 
-Keep orthogonal concerns (`extractCatalogMappings` and `applyTranslations`)
-untouched — they operate on dot-notation paths, not on a flat field set, and
-are unaffected by the switch.
+1. build both filters from the same endpoint,
+2. run both on the same response payload,
+3. compare outputs to gain confidence the new path matches (or improves on)
+   the legacy path,
+4. choose per-call which one to use, and
+5. eventually retire the legacy path in a follow-up plan once parity is
+   validated in production.
 
-## Worked example — what we get today vs. what we want
+Nothing is deleted in this plan. The legacy code stays exported and behaves
+exactly as it does today.
 
-This is the whole argument for the change in one picture.
+Keep orthogonal concerns untouched:
 
-**OpenAPI response schema (simplified, two different `id` fields at different depths):**
+- `extractCatalogMappings` is **already** a standalone step (commit
+  `2e0b294`). It is no longer a field on `SchemaFilterDefinition`; callers
+  invoke it on `filter.responseSchema` after building the filter. The new
+  AJV path follows the same convention — catalog mappings are computed
+  against the schema stored on the filter, exactly as for the legacy path.
+- `applyTranslations` is unaffected. It operates on dot-notation paths, not
+  on a flat field set.
+
+## Why this is a small change
+
+AJV's `removeAdditional: "all"` does the entire structural strip on its own:
+
+> all additional properties are removed, regardless of `additionalProperties`
+> keyword value (and no validation is made for them).
+
+Concretely: at every object node that has a `properties` keyword, AJV keeps
+only the keys named in `properties` (plus anything matched by
+`patternProperties` or `additionalProperties`) and drops the rest. It does
+this without any help from us — no `additionalProperties: false` injection,
+no schema rewrite, no walk.
+
+There is exactly one OpenAPI-3.0-specific fix-up the schema needs before we
+hand it to AJV, and we already own the function that does it.
+
+## OpenAPI 3.0 nullable lowering — what and why
+
+### The mismatch
+
+OpenAPI 3.0 expresses nullability with a sibling boolean:
+
+```yaml
+# OpenAPI 3.0
+firstName:
+  type: string
+  nullable: true
+```
+
+JSON Schema (which AJV speaks) doesn't recognize `nullable`. It expresses
+the same idea with a type array:
+
+```yaml
+# JSON Schema (and OpenAPI 3.1)
+firstName:
+  type: [string, "null"]
+```
+
+AJV reads `type: string`, sees a `null` value, and rejects it. The
+`nullable: true` sibling is silently ignored because AJV doesn't know that
+keyword.
+
+### What goes wrong without lowering
+
+Take a tiny endpoint:
 
 ```yaml
 type: object
 properties:
-  id: { type: string }                    # account ID
-  owner:
-    type: object
-    properties:
-      id: { type: number }                # person ID — different field
-      name: { type: string }
+  id:         { type: string }
+  middleName: { type: string, nullable: true }
+  age:        { type: integer, nullable: true }
 ```
 
-**Backend returns this (imagine it's a buggy backend leaking extras):**
+Backend returns:
 
 ```json
-{
-  "id": "acct-1",
-  "ssn": "123-45-6789",
-  "owner": {
-    "id": 42,
-    "ssn": "123-45-6789",
-    "name": "Alice"
-  }
-}
+{ "id": "u-1", "middleName": null, "age": null, "leak": "DROP ME" }
 ```
 
-**Current `applyFilter` + flat `allowedFields = ["id", "owner", "name"]`:**
+Run that through `Ajv({ removeAdditional: "all" })` *without* lowering:
 
-The flat set contains `id` because it exists *somewhere* in the tree. The
-structural walker happens to use `collectAllProperties(activeSchema)` when a
-schema is in scope (see `src/filter/filterObject.ts:33-40`), so it works for
-this case. But the `allowedFields` **fallback path** (used whenever
-`activeSchema` isn't structured) accepts any `id` anywhere. And the whole
-`responseSchema` field is there just to keep the structural path working —
-it's duplicated intent.
+- `middleName: null` → fails `type: string`
+- `age: null` → fails `type: integer`
+- `validate.errors` now contains two type errors that look identical to a
+  real bug, even though the spec author explicitly allowed `null`.
+- `leak` still gets stripped (good), but the noise in `validate.errors`
+  makes the `onUnknownField: "throw"` mode unusable — we can't tell a
+  legitimately undeclared field from a `nullable` field that was never
+  the problem.
+- With `oneOf`/`anyOf`, the wrong branch gets picked because the `null`
+  value rejects every branch whose type the spec lowered would have
+  accepted.
 
-**Target `applyFilter` (AJV with `removeAdditional: "all"` + `additionalProperties: false` at every level):**
+### What the lowering does
 
-```json
-{ "id": "acct-1", "owner": { "id": 42, "name": "Alice" } }
+`src/schema/transformNullableSchema.ts` (already in the repo, already used
+by `ResponseValidator`) walks the schema and rewrites every
+
+```yaml
+{ type: <X>, nullable: true }
 ```
 
-`ssn` is stripped at both levels, structurally, because at each object node
-AJV only keeps keys declared under that node's own `properties`. One
-mechanism, no fallbacks, no flat set.
+into
+
+```yaml
+{ type: [<X>, "null"] }
+```
+
+It recurses into `properties`, `items`, `additionalProperties`,
+`allOf`/`anyOf`/`oneOf`. After the pass, the schema above becomes:
+
+```yaml
+type: object
+properties:
+  id:         { type: string }
+  middleName: { type: [string, "null"] }
+  age:        { type: [integer, "null"] }
+```
+
+And the same payload validates cleanly: `null` is accepted at the named
+fields, `leak` is the only thing AJV strips, `validate.errors` is either
+empty or contains exactly the unknown-field errors a caller would actually
+want to act on.
+
+### Known limit
+
+`transformNullableSchema` does not rewrite `enum` lists when `nullable: true`
+is set (`{ type: string, enum: [a, b], nullable: true }` becomes
+`{ type: [string, "null"], enum: [a, b] }`, which still rejects `null`).
+This is a pre-existing limitation also present in the legacy path's use of
+this function, and we inherit it. If a fixture surfaces this, we extend the
+existing function rather than fork a new one.
 
 ## Decisions to surface before coding
 
@@ -71,52 +151,100 @@ Stubs below are defaults; change them if the user disagrees.
 
 | # | Question | Default |
 |---|----------|---------|
-| 1 | Is `SchemaFilterDefinition.allowedFields` part of the **public** contract we must preserve? | **No — remove it.** Library is at `0.1.0`; a clean break is cheaper than carrying a dead field. |
-| 2 | Is mutating input data in `applyFilter` acceptable? | **No — continue to clone.** AJV's `removeAdditional` mutates; we clone via `structuredClone` before validating. |
-| 3 | Target OpenAPI versions? | **3.0 and 3.1.** 3.0's `nullable: true` is handled by **reusing the existing `src/schema/transformNullableSchema.ts`** — no need to reinvent. |
-| 4 | How to handle `oneOf` / `anyOf` / `allOf` with `removeAdditional: "all"`? | **Schema-rewrite pass** sets `additionalProperties: false` on every object node. |
-| 5 | Keep the `x-asd-attribute` / `x-example` exclusion from the current code? | **Drop.** These are *schema* extensions, never appear in response data. |
-| 6 | Should the new filter return validation errors to callers? | **Yes, optionally.** Extend `ApplyFilterOptions` with `onUnknownField?: "strip" \| "throw"`. |
+| 1 | Should the new path replace or coexist with the legacy path? | **Coexist.** Both `applyFilter` (legacy) and `applyAjvFilter` (new) ship in 0.2.0. No breaking changes. A future plan handles deprecation/removal once the user has validated parity. |
+| 2 | Naming for the new symbols? | **`AjvFilterDefinition`, `buildAjvFilter`, `applyAjvFilter`, `AjvFilterRegistry`, `ApplyAjvFilterOptions`.** Mirrors legacy names with an `Ajv` qualifier. Easy to grep, easy to delete later. |
+| 3 | Is mutating input data in `applyAjvFilter` acceptable? | **No — clone.** `removeAdditional` mutates; clone via `structuredClone` before validating, matching the legacy contract. |
+| 4 | Target OpenAPI versions? | **3.0 and 3.1.** 3.0's `nullable: true` is handled by reusing `transformNullableSchema`. |
+| 5 | Should the new filter return validation errors to callers? | **Yes, optionally.** `ApplyAjvFilterOptions.onUnknownField?: "strip" \| "throw"`, defaults to `"strip"`. |
+| 6 | Share `SchemaFilterRegistry` between the two filter types? | **No — separate `AjvFilterRegistry`.** Different value type; keeping them separate means we can delete the legacy registry in one move when the time comes. |
+| 7 | Pre-process the schema once at build time, or on every `applyAjvFilter` call? | **Once, lazily, cached per filter instance** via the same `WeakMap` that caches the compiled validator. Cheaper than recomputing, simpler than threading a "prepared schema" field through the public type. |
 
 ## Target shape
 
-Trimmed `SchemaFilterDefinition`:
+Legacy `SchemaFilterDefinition` — **unchanged** by this plan:
 
 ```ts
-// src/types.ts
+// src/types.ts (already on main)
 export interface SchemaFilterDefinition {
     backend: string;
     protocol: Protocol;
     operation: string;
-    responseSchema: unknown;           // now pre-processed for AJV
-    catalogMappings: CatalogMappings;  // unchanged — feeds applyTranslations
+    allowedFields: string[];
+    responseSchema: unknown;
     description?: string;
-    // allowedFields: string[];   ← removed
 }
 ```
 
-Rewritten `applyFilter`:
+New parallel type:
 
 ```ts
-// src/filter/applyFilter.ts
+// src/types.ts (added)
+export interface AjvFilterDefinition {
+    backend: string;
+    protocol: Protocol;
+    operation: string;
+    /** Original (post-deref) response schema. Same shape as the legacy
+     *  type's `responseSchema` so `extractCatalogMappings` works
+     *  identically against either filter type. */
+    responseSchema: unknown;
+    description?: string;
+}
+```
+
+New AJV instance:
+
+```ts
+// src/filter/createFilterAjv.ts
+import { Ajv } from "ajv";
+import addFormatsImport from "ajv-formats";
+
+const addFormats: (ajv: Ajv) => Ajv =
+    (addFormatsImport as unknown as { default?: (ajv: Ajv) => Ajv }).default ??
+    (addFormatsImport as unknown as (ajv: Ajv) => Ajv);
+
+let cached: Ajv | undefined;
+
+export function getFilterAjv(): Ajv {
+    if (cached) return cached;
+    cached = new Ajv({
+        allErrors: true,
+        strict: false,
+        coerceTypes: false,
+        useDefaults: false,
+        removeAdditional: "all",
+    });
+    addFormats(cached);
+    return cached;
+}
+```
+
+**Do not reuse `createAjv` from `validation/`** — it is deliberately
+`removeAdditional: false` and flipping it would change `ResponseValidator`
+semantics for every existing consumer.
+
+New `applyAjvFilter`:
+
+```ts
+// src/filter/applyAjvFilter.ts
 import type { ValidateFunction } from "ajv";
-import type { SchemaFilterDefinition } from "../types.js";
+import type { AjvFilterDefinition } from "../types.js";
 import { SchemaFilterError, describeError } from "../errors.js";
+import { transformNullableSchema } from "../schema/transformNullableSchema.js";
 import { getFilterAjv } from "./createFilterAjv.js";
 
 export type FilterErrorMode = "throw" | "passthrough";
 
-export interface ApplyFilterOptions {
-    onError?: FilterErrorMode;                    // retained contract
-    onUnknownField?: "strip" | "throw";           // new in 0.2.0
+export interface ApplyAjvFilterOptions {
+    onError?: FilterErrorMode;                    // matches legacy contract
+    onUnknownField?: "strip" | "throw";           // new
 }
 
-const validatorCache = new WeakMap<SchemaFilterDefinition, ValidateFunction>();
+const validatorCache = new WeakMap<AjvFilterDefinition, ValidateFunction>();
 
-export function applyFilter(
+export function applyAjvFilter(
     data: unknown,
-    filter: SchemaFilterDefinition,
-    options: ApplyFilterOptions = {}
+    filter: AjvFilterDefinition,
+    options: ApplyAjvFilterOptions = {}
 ): unknown {
     const errorMode = options.onError ?? "throw";
     const unknownFieldMode = options.onUnknownField ?? "strip";
@@ -149,328 +277,227 @@ export function applyFilter(
     }
 }
 
-function getValidator(filter: SchemaFilterDefinition): ValidateFunction {
+function getValidator(filter: AjvFilterDefinition): ValidateFunction {
     const cached = validatorCache.get(filter);
     if (cached) return cached;
-    const compiled = getFilterAjv().compile(filter.responseSchema as object);
+    const lowered = transformNullableSchema(filter.responseSchema);
+    const compiled = getFilterAjv().compile(lowered as object);
     validatorCache.set(filter, compiled);
     return compiled;
 }
 
-function filterKey(f: SchemaFilterDefinition): string {
+function filterKey(f: AjvFilterDefinition): string {
     return `${f.backend}:${f.protocol}:${f.operation}`;
 }
 ```
 
-Updated `buildSchemaFilter`:
+New `buildAjvFilter`:
 
 ```ts
-// src/filter/buildSchemaFilter.ts (diff-style)
-export function buildSchemaFilter(options: BuildSchemaFilterOptions): SchemaFilterDefinition | null {
+// src/filter/buildAjvFilter.ts
+import type { Endpoint, Protocol, AjvFilterDefinition } from "../types.js";
+
+export interface BuildAjvFilterOptions {
+    endpoint: Endpoint;
+    backend: string;
+    protocol: Protocol;
+    description?: string;
+}
+
+export function buildAjvFilter(options: BuildAjvFilterOptions): AjvFilterDefinition | null {
     const { endpoint, backend, protocol, description } = options;
-
-    const rawSchema = pickResponseSchema(endpoint);
-    if (!rawSchema) return null;
-
-    // catalog mappings want the ORIGINAL schema (with x-catalog extensions intact)
-    const catalogMappings = extractCatalogMappings(rawSchema);
-
-    // AJV wants a rewritten schema with nullable lowered and
-    // additionalProperties: false set on every object node
-    const responseSchema = prepareSchemaForAjv(rawSchema);
-    if (!hasAnyProperty(responseSchema)) return null;   // replaces the old "no allowedFields" guard
+    const responseSchema = pickResponseSchema(endpoint);
+    if (!responseSchema) return null;
 
     return {
         backend,
         protocol,
         operation: endpoint.path ? endpoint.method.toLowerCase() + pascalizePath(endpoint.path) : "",
         responseSchema,
-        catalogMappings,
         description,
     };
 }
+
+// `pickResponseSchema` and `pascalizePath` should be lifted out of the
+// existing `buildSchemaFilter.ts` into a shared module
+// (`src/filter/responseSchemaUtils.ts`) so both builders generate
+// identical operation keys. If extraction is mechanical, do it; otherwise
+// duplicate and add a "keep in sync" comment in both files.
 ```
 
-## Phases
+New `AjvFilterRegistry` is a copy of `SchemaFilterRegistry` with the value
+type swapped to `AjvFilterDefinition`. Same `${backend}:${protocol}:${operation}`
+key shape so callers can keep both registries in sync.
 
-### Phase 0 — Prototype on fixtures (no source changes)
+## The plan
 
-Write a throwaway test that walks the existing fixtures through the proposed
-pipeline and asserts the stripped output. If this doesn't pass on the real
-shapes, the rest of the plan is wrong.
+A single phase. Prototype and ship are the same step — the parity test is
+both the validation gate and the regression net.
 
-```ts
-// test/filter/ajvPrototype.test.ts  (DELETE after Phase 5 lands, or keep as characterization)
-import { describe, it, expect } from "vitest";
-import Ajv from "ajv";
-import addFormats from "ajv-formats";
-import { parseOpenApiSpec } from "../../src/parser/parseOpenApiSpec.js";
-import { transformNullableSchema } from "../../src/schema/transformNullableSchema.js";
-import { loadFixture } from "../fixtures/loadFixture.js";
+1. **Add the new files.** All additive; no legacy code is touched.
 
-function lockObjects(schema: unknown): unknown {
-    // walk schema tree; for every node with `properties` and no
-    // `additionalProperties`, set `additionalProperties: false`.
-    // (Full impl lands in Phase 1 as prepareSchemaForAjv.)
-}
+   - `src/filter/createFilterAjv.ts`
+   - `src/filter/applyAjvFilter.ts`
+   - `src/filter/buildAjvFilter.ts`
+   - `src/filter/AjvFilterRegistry.ts`
+   - *(optional)* `src/filter/responseSchemaUtils.ts` — extracted
+     `pickResponseSchema` / `pascalizePath`.
+   - `src/types.ts` — add `AjvFilterDefinition`.
+   - `src/index.ts` — export the new symbols alongside the legacy block.
 
-describe("AJV prototype — does removeAdditional:all work on our real fixtures?", () => {
-    it("minimal.yml: strips undeclared top-level field", async () => {
-        const spec = await parseOpenApiSpec(loadFixture("minimal.yml"));
-        const schema = spec.endpoints[0]!.responses["200"]!.content!["application/json"]!.schema;
-        const prepared = lockObjects(transformNullableSchema(schema));
+2. **Add tests.**
 
-        const ajv = new Ajv({ removeAdditional: "all", strict: false, allErrors: true });
-        addFormats(ajv);
-        const validate = ajv.compile(prepared as object);
+   - `test/filter/applyAjvFilter.test.ts` — basic strip cases (top-level
+     extras, nested extras, array items).
+   - `test/filter/applyAjvFilter.polymorphism.test.ts` — `oneOf`/`anyOf`
+     branches each strip independently:
 
-        const payload = { id: "x", bogus: "DROP ME" };
-        validate(payload);
-        expect(payload).toEqual({ id: "x" });
-    });
+     ```ts
+     it("strips extras from each oneOf branch independently", () => {
+         const filter = buildAjvFilter({
+             endpoint: endpoint({
+                 "200": {
+                     description: "ok",
+                     content: {
+                         "application/json": {
+                             schema: {
+                                 oneOf: [
+                                     { type: "object", properties: { kind: { const: "a" }, a: { type: "string" } }, required: ["kind"] },
+                                     { type: "object", properties: { kind: { const: "b" }, b: { type: "number" } }, required: ["kind"] },
+                                 ],
+                             },
+                         },
+                     },
+                 },
+             }),
+             backend: "mch",
+             protocol: "mcp",
+         })!;
 
-    // repeat for nullable-and-x-attrs.yml, nested-catalogs.yml, array-response.yml
-});
-```
+         expect(applyAjvFilter({ kind: "a", a: "x", leak: 1 }, filter)).toEqual({ kind: "a", a: "x" });
+         expect(applyAjvFilter({ kind: "b", b: 2, leak: 1 }, filter)).toEqual({ kind: "b", b: 2 });
+     });
+     ```
 
-**Kill signal:** if any fixture — especially `nullable-and-x-attrs.yml` or
-anything with polymorphism — produces wrong output here, stop. The rest of
-the plan assumes this phase passed.
+   - `test/filter/applyAjvFilter.nullable.test.ts` — confirms the lowering
+     handles the OpenAPI 3.0 examples shown above (a `null` field is
+     preserved, an unknown sibling is stripped, no spurious type errors
+     in `validate.errors`).
+   - **`test/filter/parity.test.ts` — the safety net for parallel
+     rollout.** For each fixture endpoint, build both filters from the
+     same `Endpoint`, run both on the same payload, and assert outputs are
+     deep-equal. Where they intentionally diverge (e.g. AJV strips an
+     extra that the legacy walker leaks), capture the diff in an explicit
+     `expect(...).toEqual(...)` so divergence is documented and reviewed,
+     not silent.
 
-### Phase 1 — Add the schema-rewrite pass
+     ```ts
+     // sketch
+     for (const fx of FIXTURES) {
+         it(`parity for ${fx.name}`, async () => {
+             const spec = await parseOpenApiSpec(loadFixture(fx.name));
+             for (const ep of spec.endpoints) {
+                 const legacy = buildSchemaFilter({ endpoint: ep, backend: "mch", protocol: "mcp" });
+                 const ajv = buildAjvFilter({ endpoint: ep, backend: "mch", protocol: "mcp" });
+                 if (!legacy || !ajv) { expect(legacy).toEqual(ajv); continue; }
+                 const legacyOut = applyFilter(fx.samplePayload, legacy);
+                 const ajvOut = applyAjvFilter(fx.samplePayload, ajv);
+                 expect(ajvOut).toEqual(legacyOut);
+             }
+         });
+     }
+     ```
 
-New file: `src/filter/prepareSchemaForAjv.ts`.
+     This file is the headline deliverable: it answers "is the new path
+     safe to adopt?".
 
-One pure function. Reuses `transformNullableSchema` so we're not maintaining
-two nullable converters:
-
-```ts
-// src/filter/prepareSchemaForAjv.ts
-import { transformNullableSchema } from "../schema/transformNullableSchema.js";
-
-/**
- * Prepare an OpenAPI response schema for AJV with `removeAdditional: "all"`.
- *
- *   1. Lowers OpenAPI 3.0 `nullable: true` to JSON Schema union types.
- *   2. Sets `additionalProperties: false` on every object node that has
- *      `properties` but no explicit `additionalProperties` (respects dynamic
- *      maps the spec author deliberately left open).
- *   3. Recurses into `properties`, `items`, `allOf`/`anyOf`/`oneOf`,
- *      and `additionalProperties` (when schema-valued).
- *
- * Pure: input is never mutated.
- */
-export function prepareSchemaForAjv(schema: unknown): unknown {
-    const nullableLowered = transformNullableSchema(schema);   // already deep-clones
-    return lockObjects(nullableLowered);
-}
-
-function lockObjects(schema: unknown): unknown {
-    if (!isObject(schema)) return schema;
-
-    const out: Record<string, unknown> = { ...schema };
-
-    if (isObjectNode(out) && !("additionalProperties" in out)) {
-        out.additionalProperties = false;
-    }
-
-    if (isObject(out.properties)) {
-        const next: Record<string, unknown> = {};
-        for (const [k, v] of Object.entries(out.properties)) next[k] = lockObjects(v);
-        out.properties = next;
-    }
-    if (out.items !== undefined) out.items = lockObjects(out.items);
-    if (isObject(out.additionalProperties)) out.additionalProperties = lockObjects(out.additionalProperties);
-    for (const combiner of ["allOf", "anyOf", "oneOf"] as const) {
-        if (Array.isArray(out[combiner])) out[combiner] = (out[combiner] as unknown[]).map(lockObjects);
-    }
-
-    return out;
-}
-
-function isObject(v: unknown): v is Record<string, unknown> {
-    return !!v && typeof v === "object" && !Array.isArray(v);
-}
-function isObjectNode(s: Record<string, unknown>): boolean {
-    return s.type === "object" || isObject(s.properties);
-}
-```
-
-Unit-tested in isolation, no AJV dependency in its tests.
-
-### Phase 2 — Introduce the AJV filter instance
-
-New file: `src/filter/createFilterAjv.ts`. Mirrors `src/validation/createAjv.ts`
-exactly — including the same `ajv-formats` interop workaround — but with
-`removeAdditional: "all"`:
-
-```ts
-// src/filter/createFilterAjv.ts
-import { Ajv } from "ajv";
-import addFormatsImport from "ajv-formats";
-
-const addFormats: (ajv: Ajv) => Ajv =
-    (addFormatsImport as unknown as { default?: (ajv: Ajv) => Ajv }).default ??
-    (addFormatsImport as unknown as (ajv: Ajv) => Ajv);
-
-let cached: Ajv | undefined;
-
-export function getFilterAjv(): Ajv {
-    if (cached) return cached;
-    cached = new Ajv({
-        allErrors: true,
-        strict: false,
-        coerceTypes: false,
-        useDefaults: false,
-        removeAdditional: "all",    // ← the only meaningful difference from createAjv
-    });
-    addFormats(cached);
-    return cached;
-}
-```
-
-**Do not reuse `createAjv` from `validation/`** — it is deliberately
-`removeAdditional: false` and flipping it would change `ResponseValidator`
-semantics for every existing consumer.
-
-### Phase 3 — Rewrite `buildSchemaFilter` and `applyFilter`
-
-See the code snippets under "Target shape" above. Then delete, after tests go
-green:
-
-- `src/filter/extractAllowedFields.ts`
-- `src/filter/filterObject.ts`
-- `src/filter/filterArray.ts`
-- `src/filter/filterDynamicObject.ts`
-- `src/schema/collectAllProperties.ts` *(only consumer is the deleted `filterObject.ts` — grep to confirm before removal)*
-- `src/schema/getFieldSchema.ts` *(same — verify no other consumer)*
-- Their tests.
-
-### Phase 4 — Public surface and types
-
-1. `src/types.ts`: remove `allowedFields` from `SchemaFilterDefinition`.
-2. `src/index.ts`: confirm `buildSchemaFilter`, `applyFilter`,
-   `SchemaFilterRegistry`, `SchemaFilterDefinition`, `CatalogMappings`,
-   `applyTranslations` all still export. Remove any re-exports of deleted
-   files (there shouldn't be any — check).
-3. `package.json`: bump `0.1.0` → `0.2.0` (breaking change).
-4. Add a short breaking-change note at the top of `README.md`:
+3. **Ship.** Bump `package.json` from `0.1.0` → `0.2.0` (additive feature
+   release). Add a short "Two filtering paths" section to `README.md`
+   describing when to choose each and how to compare.
 
    ```md
-   > **0.2.0**: `SchemaFilterDefinition.allowedFields` has been removed.
-   > `applyFilter` is now AJV-driven. `responseSchema` is the single source
-   > of truth.
+   ### Two filtering paths (0.2.0+)
+
+   - `applyFilter` — original walker, structural where it can be, falls
+     back to a flat `allowedFields` set elsewhere. Stable; default.
+   - `applyAjvFilter` — AJV with `removeAdditional: "all"`. Strictly
+     structural at every depth, handles `oneOf`/`anyOf`/`allOf`
+     correctly. Recommended for new integrations; run side-by-side with
+     `applyFilter` to validate parity before switching over.
+
+   Both filters are built from the same `Endpoint`, share the same
+   registry key shape, and are compatible with `extractCatalogMappings`
+   + `applyTranslations`. Choose per call.
    ```
 
-### Phase 5 — Tests
+4. **Verify.** `pnpm tsc-check && pnpm eslint && pnpm test && pnpm coverage`.
+   Coverage stays ≥ 80% — every new file has its own tests.
 
-**Adapt** — current assertions that need to change:
-
-```ts
-// test/filter/buildSchemaFilter.test.ts — before
-expect(filter!.allowedFields.sort()).toEqual(["id", "status"]);
-
-// after
-expect(filter!.responseSchema).toMatchObject({
-    type: "object",
-    additionalProperties: false,        // rewrite pass added this
-    properties: {
-        id: { type: "string" },
-        status: expect.objectContaining({ type: "string" }),
-    },
-});
-```
-
-```ts
-// test/filter/applyFilter.test.ts — new polymorphism case that proves the point
-it("strips extras from each oneOf branch independently", () => {
-    const filter = buildSchemaFilter({
-        endpoint: endpoint({
-            "200": {
-                description: "ok",
-                content: {
-                    "application/json": {
-                        schema: {
-                            oneOf: [
-                                { type: "object", properties: { kind: { const: "a" }, a: { type: "string" } }, required: ["kind"] },
-                                { type: "object", properties: { kind: { const: "b" }, b: { type: "number" } }, required: ["kind"] },
-                            ],
-                        },
-                    },
-                },
-            },
-        }),
-        backend: "mch",
-        protocol: "mcp",
-    })!;
-
-    expect(applyFilter({ kind: "a", a: "x", leak: 1 }, filter)).toEqual({ kind: "a", a: "x" });
-    expect(applyFilter({ kind: "b", b: 2, leak: 1 }, filter)).toEqual({ kind: "b", b: 2 });
-});
-```
-
-- `test/filter/SchemaFilterRegistry.test.ts` — unaffected.
-- `test/integration.test.ts` — **primary regression signal.** Should stay
-  green without edits; if it doesn't, that is the bug.
-
-**Add:**
-
-- `test/filter/prepareSchemaForAjv.test.ts` — unit tests for the rewrite pass
-  (nullable lowering, `additionalProperties: false` insertion, dynamic-map
-  preservation, combinator recursion).
-- `test/filter/applyFilter.polymorphism.test.ts` — the `oneOf`/`anyOf` cases
-  above. These are the tests that justify the whole change.
-
-**Delete:**
-
-- `test/filter/extractAllowedFields.test.ts`
-- Any unit tests for `filterObject` / `filterArray` / `filterDynamicObject`.
-
-### Phase 6 — Tidy
-
-- `pnpm tsc-check && pnpm eslint && pnpm test`.
-- `pnpm coverage` — filter/ line coverage should stay ≥ current (we deleted
-  more lines than we added).
-- Remove stale comments in `applyFilter.ts`. Update its top-of-file docstring
-  to describe the AJV-based contract.
+That's the entire plan. If the parity test surfaces a real divergence on a
+fixture, fix the schema lowering or extend `transformNullableSchema` —
+**don't** add a wholesale schema-rewrite pass until a fixture proves it's
+needed.
 
 ## File-level change summary
 
+All changes are additions or doc edits. Nothing is deleted or renamed.
+
 | File | Change |
 |------|--------|
-| `src/filter/prepareSchemaForAjv.ts` | **new** |
 | `src/filter/createFilterAjv.ts` | **new** |
-| `src/filter/buildSchemaFilter.ts` | modified |
-| `src/filter/applyFilter.ts` | **rewritten** |
-| `src/filter/extractAllowedFields.ts` | **deleted** |
-| `src/filter/filterObject.ts` | **deleted** |
-| `src/filter/filterArray.ts` | **deleted** |
-| `src/filter/filterDynamicObject.ts` | **deleted** |
-| `src/schema/collectAllProperties.ts` | **deleted** (if no other consumer) |
-| `src/schema/getFieldSchema.ts` | **deleted** (if no other consumer) |
-| `src/schema/transformNullableSchema.ts` | **unchanged — reused by `prepareSchemaForAjv`** |
+| `src/filter/buildAjvFilter.ts` | **new** |
+| `src/filter/applyAjvFilter.ts` | **new** |
+| `src/filter/AjvFilterRegistry.ts` | **new** |
+| `src/filter/responseSchemaUtils.ts` | **new** *(optional — only if `pickResponseSchema` / `pascalizePath` extracted from `buildSchemaFilter.ts`)* |
+| `src/filter/buildSchemaFilter.ts` | unchanged *(or trivial: imports moved to `responseSchemaUtils.ts` if extracted)* |
+| `src/filter/applyFilter.ts` | unchanged |
 | `src/filter/SchemaFilterRegistry.ts` | unchanged |
+| `src/filter/extractAllowedFields.ts` | unchanged |
+| `src/filter/filterObject.ts` | unchanged |
+| `src/filter/filterArray.ts` | unchanged |
+| `src/filter/filterDynamicObject.ts` | unchanged |
 | `src/filter/applyTranslations.ts` | unchanged |
 | `src/filter/translateData.ts` | unchanged |
 | `src/filter/resolveCatalogForPath.ts` | unchanged |
-| `src/types.ts` | remove `allowedFields` |
-| `src/index.ts` | verify public surface |
-| `package.json` | version bump 0.1.0 → 0.2.0 |
-| `README.md` | breaking-change note |
-| `test/filter/*` | see Phase 5 |
+| `src/schema/collectAllProperties.ts` | unchanged |
+| `src/schema/getFieldSchema.ts` | unchanged |
+| `src/schema/transformNullableSchema.ts` | unchanged — reused by `applyAjvFilter` |
+| `src/types.ts` | add `AjvFilterDefinition` |
+| `src/index.ts` | add new exports alongside the legacy block |
+| `package.json` | version bump 0.1.0 → 0.2.0 (additive) |
+| `README.md` | new "Two filtering paths" section |
+| `test/filter/applyAjvFilter.test.ts` | **new** |
+| `test/filter/applyAjvFilter.polymorphism.test.ts` | **new** |
+| `test/filter/applyAjvFilter.nullable.test.ts` | **new** |
+| `test/filter/parity.test.ts` | **new** |
+| existing `test/filter/*.test.ts` | unchanged |
+| `test/integration.test.ts` | unchanged |
 
 ## Risks and mitigations
 
 | Risk | Mitigation |
 |------|------------|
-| Real production specs use heavier polymorphism than fixtures, breaking `removeAdditional: "all"` | Phase 0 is the gate. If the gate passes but production regresses, keep the old code path behind `applyFilter(..., { strategy: "legacy" })` for one release before deleting. |
-| `nullable: true` edge case we don't know about | `prepareSchemaForAjv` tests every observed 3.0 pattern. `transformNullableSchema` already has coverage; we inherit it. |
-| `structuredClone` slowdown on huge responses | Measure in `test/integration.test.ts` with a representative payload. Only add an opt-in `mutate: true` path if measured hot. |
-| Downstream consumer reading `allowedFields` | Confirmed internal-only in `research.md`. Grep once more at Phase 3 right before deletion. |
+| A real fixture exposes a combinator gotcha (`oneOf`/`anyOf`/`allOf`) where `removeAdditional: "all"` doesn't strip as expected | The parity test catches it. Fix is targeted — extend the lowering or add a narrow workaround for the specific shape, not a wholesale schema rewrite. Legacy path stays available. |
+| `nullable` + `enum` interaction (transform doesn't add `null` to `enum`) | Pre-existing limitation of `transformNullableSchema`, also affects `ResponseValidator`. If a fixture surfaces it, extend the shared function — both paths benefit. |
+| `structuredClone` slowdown on huge responses | Measure with a representative payload. Only add an opt-in `mutate: true` path if measured hot. Legacy path is unchanged so no regression risk for existing callers. |
+| Both registries drift out of sync on operation/key shape | Extract `pickResponseSchema` and `pascalizePath` into `responseSchemaUtils.ts` so the operation key is built by exactly one function for both filter types. The parity test exercises key-equality explicitly. |
+| Bundle size grows because legacy code is still shipped | Acceptable for one release. The follow-up deprecation plan removes the legacy path once parity is validated; that's where the size comes back. |
 
 ## Out of scope
 
+- **Deprecating or deleting the legacy path.** Follow-up plan, written
+  *after* the parity test has run against real production payloads for
+  some agreed period and the user is satisfied. None of
+  `extractAllowedFields`, `filterObject`, `filterArray`,
+  `filterDynamicObject`, `collectAllProperties`, or `getFieldSchema` is
+  removed in this plan.
+- **Any wholesale schema-rewrite pass** (the previous draft of this plan
+  proposed `prepareSchemaForAjv` to inject `additionalProperties: false`
+  on every object node). With `removeAdditional: "all"`, this is
+  unnecessary. Only add it if a fixture proves it is.
 - Replacing `ResponseValidator` (separate role, deliberate
   `removeAdditional: false`).
-- Changing `CatalogMappings` / translation logic.
+- Changing `extractCatalogMappings` / translation logic. These are
+  already standalone (commit `2e0b294`) and work against
+  `filter.responseSchema` for both filter types.
 - Supporting Swagger 2.0 (library is OpenAPI 3.x only).
