@@ -127,3 +127,35 @@ export interface FilterContext {
     schema?: unknown;
     path?: string;
 }
+
+/**
+ * Per-segment plan for an outbound HTTP call to a backend, derived from an
+ * Endpoint + tool arguments. The caller is responsible for prepending its
+ * own base URL, executing the request, and applying any backend-specific
+ * extras (e.g. x-apigw-api-id).
+ */
+export interface ToolRequestPlan {
+    method: HttpMethod;
+    path: string;
+    query: Record<string, string | number | boolean | Array<string | number | boolean>>;
+    headers: Record<string, string>;
+    body?: unknown;
+}
+
+/** MCP CallToolResult shape (per spec 2025-06-18). */
+export interface CallToolResult {
+    content: Array<{ type: "text"; text: string }>;
+    structuredContent?: Record<string, unknown>;
+    isError?: boolean;
+}
+
+/**
+ * Minimal abstraction over an HTTP error the caller is willing to translate
+ * into a CallToolResult. Compatible with axios's error.response, but does
+ * not depend on axios.
+ */
+export interface ToolHttpErrorResponse {
+    status: number;
+    statusText?: string;
+    data?: unknown;
+}

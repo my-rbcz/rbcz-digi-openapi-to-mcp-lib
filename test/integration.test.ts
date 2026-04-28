@@ -7,6 +7,8 @@ import { applyTranslations } from "../src/filter/applyTranslations.js";
 import { ResponseValidator } from "../src/validation/ResponseValidator.js";
 import { extractCatalogNames } from "../src/catalog/extractCatalogNames.js";
 import { extractCatalogMappings } from "../src/catalog/extractCatalogMappings.js";
+import { ToolRegistry } from "../src/tool/ToolRegistry.js";
+import { executeToolCall } from "../src/tool/executeToolCall.js";
 import { loadFixture } from "./fixtures/loadFixture.js";
 
 describe("end-to-end pipeline", () => {
@@ -51,5 +53,54 @@ describe("end-to-end pipeline", () => {
     it("collects catalog names from the full dereferenced document", async () => {
         const spec = await parseOpenApiSpec(loadFixture("nullable-and-x-attrs.yml"));
         expect(extractCatalogNames(spec.fullDocument)).toEqual(["DebitCardType"]);
+    });
+
+    it("end-to-end: registry → plan → fake fetch → filter → translate → format", async () => {
+        const spec = await parseOpenApiSpec(loadFixture("nested-catalogs.yml"));
+        const endpoint = spec.endpoints[0]!;
+        const tool = buildToolDefinition(endpoint);
+
+        const registry = new ToolRegistry();
+        registry.add(endpoint);
+        expect(registry.has(tool.name)).toBe(true);
+
+        const filter = buildSchemaFilter({ endpoint, backend: "mch", protocol: "mcp" })!;
+        const mappings = extractCatalogMappings(filter.responseSchema);
+
+        const captured: { path?: string; method?: string } = {};
+        const httpClient = async (plan: { method: string; path: string }) => {
+            captured.path = plan.path;
+            captured.method = plan.method;
+            return {
+                status: 200,
+                data: {
+                    status: "1",
+                    currencyFolders: {
+                        CZK: { status: "1", balance: 100, junk: true },
+                    },
+                    shouldBeStripped: "x",
+                },
+            };
+        };
+
+        const result = await executeToolCall({
+            endpoint: registry.get(tool.name)!,
+            args: { accountId: "abc-123" },
+            httpClient,
+            filter,
+            translations: { mappings, lookup: (cat, v) => `${cat}#${v}` },
+            validator: new ResponseValidator(),
+            outputSchema: tool.outputSchema,
+        });
+
+        expect(captured.method).toBe("GET");
+        expect(captured.path).toBe("/accounts/abc-123");
+        expect(result.isError).toBeUndefined();
+        const sc = result.structuredContent as Record<string, unknown>;
+        expect(sc.shouldBeStripped).toBeUndefined();
+        const folders = sc.currencyFolders as Record<string, Record<string, unknown>>;
+        expect(folders.CZK?.junk).toBeUndefined();
+        expect(folders.CZK?.status).toBe("CURRENCYFOLDERSTATUS#1");
+        expect(sc.status).toBe("1");
     });
 });

@@ -22,6 +22,16 @@ export class SchemaFilterError extends Error {
     }
 }
 
+export class ToolCallError extends Error {
+    override readonly cause?: unknown;
+
+    constructor(message: string, cause?: unknown) {
+        super(message);
+        this.name = "ToolCallError";
+        this.cause = cause;
+    }
+}
+
 export function describeError(err: unknown): string {
     return err instanceof Error ? err.message : String(err);
 }

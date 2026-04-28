@@ -8,6 +8,9 @@ of an MCP server:
 - Schema filters that strip undeclared fields from backend responses.
 - Path-aware catalog mappings + response translation.
 - AJV-backed response validation.
+- Tool-call primitives that plan an outbound HTTP request, shape the
+  response into an MCP `CallToolResult`, and format errors — without ever
+  performing I/O themselves.
 
 This package does **not** perform I/O (no S3,
 no HTTP, no filesystem), does **not** run an MCP server, and does **not** cache anything
@@ -67,6 +70,38 @@ const result = validator.validateResponse("getDebitcards", translated, tools[0]!
 
 // 7. Discover which catalogs you need from the full dereferenced doc.
 const catalogs = extractCatalogNames(spec.fullDocument);
+
+// 8. At tool-call time, plan the outbound HTTP request, run it through your
+//    own client, then filter + format the response into an MCP CallToolResult.
+import {
+    ToolRegistry,
+    planToolRequest,
+    executeToolCall,
+} from "rbcz-digi-openapi-to-mcp-lib";
+
+const toolRegistry = new ToolRegistry();
+for (const endpoint of spec.endpoints) toolRegistry.add(endpoint);
+
+const endpoint = toolRegistry.get("getDebitcards")!;
+
+// Either compose primitives yourself…
+const plan = planToolRequest({ endpoint, args: { id: "42" }, headers: incomingHeaders });
+// caller does HTTP: const response = await myAxios({ ...plan, baseURL });
+
+// …or use the optional orchestrator with a fetch-like function:
+const result = await executeToolCall({
+    endpoint,
+    args: { id: "42" },
+    headers: incomingHeaders,
+    httpClient: async (plan) => {
+        const response = await myAxios({ method: plan.method, url: plan.path, params: plan.query, data: plan.body, headers: plan.headers });
+        return { status: response.status, data: response.data };
+    },
+    filter,
+    translations: { mappings: catalogMappings, lookup: myCatalogLookup },
+    validator,
+    outputSchema: tools[0]!.outputSchema,
+});
 ```
 
 ## Module map
@@ -82,6 +117,7 @@ const catalogs = extractCatalogNames(spec.fullDocument);
 | `applyTranslations` | Translate codes in-place using a caller-supplied `CodeLookup`. |
 | `SchemaFilterRegistry` / `AjvFilterRegistry` | In-memory filter storage keyed by `${backend}:${protocol}:${operation}`. Same key shape so both registries stay in sync. |
 | `ResponseValidator` | AJV-backed, non-throwing response validator with per-tool compile cache. |
+| `ToolRegistry` / `planToolRequest` / `splitToolArguments` / `applyPathParameters` / `serializeQueryParameters` / `forwardAuthHeaders` / `wrapArrayForStructuredContent` / `buildToolResult` / `buildToolErrorResult` / `executeToolCall` | Tool-call primitives. Plan outbound HTTP requests from `Endpoint` + args, shape backend responses into MCP `CallToolResult` shapes, and format errors. The library still performs no I/O — `executeToolCall` takes a caller-supplied HTTP function. |
 
 ## Two filtering paths (0.2.0+)
 

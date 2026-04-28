@@ -16,10 +16,13 @@ export type {
     ValidationError,
     Logger,
     Protocol,
+    ToolRequestPlan,
+    CallToolResult,
+    ToolHttpErrorResponse,
 } from "./types.js";
 
 // ─── Errors ───────────────────────────────────────────────────────────
-export { OpenApiParseError, SchemaFilterError } from "./errors.js";
+export { OpenApiParseError, SchemaFilterError, ToolCallError } from "./errors.js";
 
 // ─── Parsing ──────────────────────────────────────────────────────────
 export { parseOpenApiSpec } from "./parser/parseOpenApiSpec.js";
@@ -59,3 +62,19 @@ export { AjvFilterRegistry } from "./filter/AjvFilterRegistry.js";
 // ─── Validation ───────────────────────────────────────────────────────
 export { ResponseValidator } from "./validation/ResponseValidator.js";
 export type { ResponseValidatorOptions } from "./validation/ResponseValidator.js";
+
+// ─── Tool execution ───────────────────────────────────────────────────
+export { ToolRegistry } from "./tool/ToolRegistry.js";
+export { splitToolArguments } from "./tool/splitToolArguments.js";
+export type { SplitArguments } from "./tool/splitToolArguments.js";
+export { applyPathParameters } from "./tool/applyPathParameters.js";
+export { serializeQueryParameters } from "./tool/serializeQueryParameters.js";
+export type { QueryArrayStyle } from "./tool/serializeQueryParameters.js";
+export { forwardAuthHeaders } from "./tool/forwardAuthHeaders.js";
+export { planToolRequest } from "./tool/planToolRequest.js";
+export type { PlanToolRequestOptions } from "./tool/planToolRequest.js";
+export { wrapArrayForStructuredContent } from "./tool/wrapArrayForStructuredContent.js";
+export { buildToolResult } from "./tool/buildToolResult.js";
+export { buildToolErrorResult } from "./tool/buildToolErrorResult.js";
+export { executeToolCall } from "./tool/executeToolCall.js";
+export type { ExecuteToolCallOptions, HttpResponseLike } from "./tool/executeToolCall.js";
