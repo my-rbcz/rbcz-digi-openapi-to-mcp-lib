@@ -1,14 +1,16 @@
 # Examples
 
-Two standalone Node packages that demonstrate how to use
-`rbcz-digi-openapi-to-mcp-lib` end-to-end. They are **not part of the
-library's published surface** (excluded from the tarball by `files: ["dist"]`
-in the root `package.json`) — they exist purely to show wiring.
+Two standalone Node packages plus a Bruno collection that demonstrate how
+to use `rbcz-digi-openapi-to-mcp-lib` end-to-end. They are **not part of
+the library's published surface** (excluded from the tarball by
+`files: ["dist"]` in the root `package.json`) — they exist purely to show
+wiring.
 
 | Folder | What it is |
 |---|---|
 | [`mock-mch/`](./mock-mch) | Tiny HTTP backend that pretends to be MCH. Pure Node, zero dependencies, fixture-per-route dispatch. Used as the upstream that the MCP sample calls. |
 | [`mcp-sample/`](./mcp-sample) | MCP server (Streamable HTTP transport, JSON responses) that parses an OpenAPI spec at startup and turns every endpoint into an MCP tool via this library. Uses axios as the HTTP client and the AJV-based response filter. Defaults to `http://127.0.0.1:3001/mcp`. |
+| [`bruno-collection/`](./bruno-collection) | Exported [Bruno](https://www.usebruno.com/) collection (`mcp-sample.json`) for poking at both servers — direct backend calls plus the full MCP `initialize` → `tools/list` → `tools/call` flow. README has the equivalent `curl` for every request. |
 
 ## How they fit together
 
