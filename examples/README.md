@@ -8,13 +8,13 @@ in the root `package.json`) — they exist purely to show wiring.
 | Folder | What it is |
 |---|---|
 | [`mock-mch/`](./mock-mch) | Tiny HTTP backend that pretends to be MCH. Pure Node, zero dependencies, fixture-per-route dispatch. Used as the upstream that the MCP sample calls. |
-| [`mcp-sample/`](./mcp-sample) | MCP server (stdio) that parses an OpenAPI spec at startup and turns every endpoint into an MCP tool via this library. Uses axios as the HTTP client and the AJV-based response filter. |
+| [`mcp-sample/`](./mcp-sample) | MCP server (Streamable HTTP transport, JSON responses) that parses an OpenAPI spec at startup and turns every endpoint into an MCP tool via this library. Uses axios as the HTTP client and the AJV-based response filter. Defaults to `http://127.0.0.1:3001/mcp`. |
 
 ## How they fit together
 
 ```
 MCP client (Claude / inspector / etc.)
-        │  stdio (JSON-RPC 2.0)
+        │  HTTP POST /mcp  (Streamable HTTP, JSON-RPC 2.0)
         ▼
    mcp-sample          ──▶ rbcz-digi-openapi-to-mcp-lib
    (axios + lib)               (parse → tool defs → filter → exec)
@@ -23,6 +23,10 @@ MCP client (Claude / inspector / etc.)
     mock-mch
    (fixtures/*.json)
 ```
+
+`mcp-sample` uses the MCP SDK's `StreamableHTTPServerTransport` in stateless
+mode with `enableJsonResponse: true` (no SSE) — every request gets a fresh
+server + transport so request IDs can't collide.
 
 `mcp-sample` depends on the library via `"rbcz-digi-openapi-to-mcp-lib":
 "file:../.."`, so any change under `src/` requires a `pnpm build` at the
