@@ -4,10 +4,12 @@ import type {
     CatalogMappings,
     CodeLookup,
     Endpoint,
+    Logger,
     SchemaFilterDefinition,
     ToolRequestPlan,
 } from "../types.js";
 import type { ResponseValidator } from "../validation/ResponseValidator.js";
+import { noopLogger } from "../errors.js";
 import { planToolRequest } from "./planToolRequest.js";
 import { applyFilter } from "../filter/applyFilter.js";
 import { applyAjvFilter } from "../filter/applyAjvFilter.js";
@@ -39,6 +41,9 @@ export interface ExecuteToolCallOptions {
     /** Optional output validation. Validator does not throw. */
     validator?: ResponseValidator;
     outputSchema?: unknown;
+
+    /** Optional logger; defaults to a no-op so the library stays silent unless the caller opts in. */
+    logger?: Logger;
 }
 
 /**
@@ -52,6 +57,7 @@ export interface ExecuteToolCallOptions {
  */
 export async function executeToolCall(opts: ExecuteToolCallOptions): Promise<CallToolResult> {
     const toolName = generateToolName(opts.endpoint);
+    const logger = opts.logger ?? noopLogger();
     try {
         const plan = planToolRequest({
             endpoint: opts.endpoint,
@@ -72,7 +78,14 @@ export async function executeToolCall(opts: ExecuteToolCallOptions): Promise<Cal
         const structuredContent = wrapArrayForStructuredContent(toolName, data);
 
         if (opts.validator && opts.outputSchema) {
-            opts.validator.validateResponse(toolName, structuredContent, opts.outputSchema);
+            const validationResponse = opts.validator.validateResponse(toolName, structuredContent, opts.outputSchema);
+            if (!validationResponse.valid) {
+                logger.warn(`Response validation failed for tool ${toolName} - returning response anyway`, {
+                    errors: validationResponse.errors,
+                    summary: validationResponse.summary,
+                    help: "The backend API returned data that doesn't match the expected schema. Check OpenAPI specification.",
+                });
+            }
         }
         return buildToolResult(structuredContent);
     } catch (error) {

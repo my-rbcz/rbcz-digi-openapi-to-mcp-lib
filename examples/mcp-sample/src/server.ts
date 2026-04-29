@@ -13,6 +13,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import {
     AjvFilterRegistry,
+    ResponseValidator,
     SchemaFilterRegistry,
     ToolRegistry,
     buildAjvFilter,
@@ -21,6 +22,7 @@ import {
     executeToolCall,
     parseOpenApiSpec,
     type HttpResponseLike,
+    type Logger,
     type ToolRequestPlan,
 } from "rbcz-digi-openapi-to-mcp-lib";
 
@@ -47,6 +49,15 @@ function parseFilterKind(value: string | undefined): FilterKind {
     throw new Error(`Invalid MCP_FILTER='${value}'. Expected one of: ajv, legacy, none.`);
 }
 
+// Minimal console-backed logger so library warnings (e.g. response-validation
+// failures from executeToolCall) actually surface in this sample's output.
+const logger: Logger = {
+    debug: (msg, meta) => console.log(`[mcp-sample][debug] ${msg}`, meta ?? ""),
+    info: (msg, meta) => console.log(`[mcp-sample][info]  ${msg}`, meta ?? ""),
+    warn: (msg, meta) => console.warn(`[mcp-sample][warn]  ${msg}`, meta ?? ""),
+    error: (msg, meta) => console.error(`[mcp-sample][error] ${msg}`, meta ?? ""),
+};
+
 async function main(): Promise<void> {
     const specText = await readFile(SPEC_PATH, "utf8");
     const spec = await parseOpenApiSpec(specText);
@@ -55,6 +66,8 @@ async function main(): Promise<void> {
     const toolRegistry = new ToolRegistry();
     const ajvFilterRegistry = new AjvFilterRegistry();
     const legacyFilterRegistry = new SchemaFilterRegistry();
+    const outputSchemas = new Map<string, unknown>();
+    const validator = new ResponseValidator({ logger });
 
     for (const endpoint of spec.endpoints) {
         const toolDef = buildToolDefinition(endpoint);
@@ -65,6 +78,7 @@ async function main(): Promise<void> {
             inputSchema: toolDef.inputSchema as Tool["inputSchema"],
             ...(toolDef.outputSchema ? { outputSchema: toolDef.outputSchema as Tool["outputSchema"] } : {}),
         });
+        if (toolDef.outputSchema) outputSchemas.set(toolDef.name, toolDef.outputSchema);
 
         // Build BOTH filters so the active one can be flipped at runtime via MCP_FILTER.
         const ajvFilter = buildAjvFilter({ endpoint, backend: BACKEND, protocol: PROTOCOL });
@@ -107,6 +121,9 @@ async function main(): Promise<void> {
                 args: args as Record<string, unknown>,
                 httpClient,
                 filter,
+                validator,
+                outputSchema: outputSchemas.get(name),
+                logger,
             });
             return result as unknown as Record<string, unknown>;
         });
