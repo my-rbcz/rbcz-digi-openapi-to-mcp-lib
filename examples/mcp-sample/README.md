@@ -1,15 +1,17 @@
-# rbcz-digi-mcp-sample
+# mcp-sample
 
 Minimal MCP server that exercises **`rbcz-digi-openapi-to-mcp-lib`** end-to-end:
 
 - parses `docs/mch-all.yml` (an OpenAPI 3.x spec) at startup
-- exposes every endpoint as an MCP tool over **stdio**
+- exposes every endpoint as an MCP tool
+- speaks MCP over **Streamable HTTP** at `POST /mcp` (the SDK's
+  `StreamableHTTPServerTransport`, stateless mode, `enableJsonResponse: true`
+  — plain JSON responses, no SSE)
 - routes tool calls through the library's `executeToolCall` orchestrator
-- uses the **AJV-based** response filter (`buildAjvFilter` / `AjvFilterRegistry`) — no validation
+- uses the **AJV-based** response filter (`buildAjvFilter` /
+  `AjvFilterRegistry`) — no validation
 - uses **axios** as the HTTP client supplied to `executeToolCall`
 - targets **`rbcz-digi-mock-mch`** (defaults to `http://127.0.0.1:3000`)
-
-The goal is to confirm the library wires together as documented.
 
 ## Run
 
@@ -35,8 +37,16 @@ root. Rebuild the lib (`pnpm build` at the repo root) any time you change its
 source; the sample's symlinked `node_modules` entry will pick up the new
 `dist/` automatically.
 
-The server speaks MCP over stdio (JSON-RPC 2.0, newline-delimited). Override the
-backend with `MCH_BASE_URL=http://host:port pnpm start`.
+The MCP endpoint defaults to `http://127.0.0.1:3001/mcp`. Configure with:
+
+| Env var | Default | Purpose |
+|---|---|---|
+| `MCH_BASE_URL` | `http://127.0.0.1:3000` | Upstream backend (mock-mch) |
+| `MCP_HOST` | `127.0.0.1` | MCP server bind host |
+| `MCP_PORT` | `3001` | MCP server port |
+
+A new `Server` + transport is created **per request** (stateless mode) so
+request IDs cannot collide across concurrent clients.
 
 ## What the wiring looks like
 
@@ -56,6 +66,25 @@ backend with `MCH_BASE_URL=http://host:port pnpm start`.
 
 No catalog translations and no `ResponseValidator` are wired — filtering only,
 per the task brief.
+
+## Quick smoke test (curl)
+
+```bash
+# list tools
+curl -sS -X POST http://127.0.0.1:3001/mcp \
+  -H 'content-type: application/json' \
+  -H 'accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+
+# call a tool
+curl -sS -X POST http://127.0.0.1:3001/mcp \
+  -H 'content-type: application/json' \
+  -H 'accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"getUserInfo","arguments":{"clientId":1001}}}'
+```
+
+(Tool names come from the OpenAPI `operationId` — check the `tools/list`
+response for the exact names this spec generates.)
 
 ## Notes / caveats observed while testing
 
