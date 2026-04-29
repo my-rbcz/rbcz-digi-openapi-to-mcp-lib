@@ -3,7 +3,7 @@
 Tiny HTTP backend that pretends to be MCH. Used as the upstream for
 [`../mcp-sample/`](../mcp-sample); also runnable on its own with `curl`.
 
-- Single file (`server.js`), pure Node — **no dependencies**, no
+- Single file (`server.cjs`), pure Node — **no dependencies**, no
   `package.json`, no build step.
 - Each route returns a JSON fixture loaded from `fixtures/<route>/<name>.json`.
 - Which fixture is returned is decided by the **request inputs** (path, query,
@@ -12,8 +12,8 @@ Tiny HTTP backend that pretends to be MCH. Used as the upstream for
 ## Run
 
 ```bash
-node server.js                      # http://127.0.0.1:3000
-PORT=4000 HOST=0.0.0.0 node server.js
+node server.cjs                      # http://127.0.0.1:3000
+PORT=4000 HOST=0.0.0.0 node server.cjs
 ```
 
 On startup the server prints every route and the fixtures available for it.
@@ -28,13 +28,13 @@ On startup the server prints every route and the fixtures available for it.
 | `POST /catalogs/bulk` | body `[]` / only `Countries` / anything else | `catalogs-bulk/empty.json` / `single.json` / `default.json` |
 
 Any unrecognised `clientId` on `/user/info` or `/contacts` returns 404. The
-authoritative dispatch table lives at the top of `server.js` — keep that
+authoritative dispatch table lives at the top of `server.cjs` — keep that
 comment in sync if you add fixtures or routes.
 
 ## Layout
 
 ```
-server.js              # the whole server
+server.cjs              # the whole server
 fixtures/
   clients/             one fixture
   user-info/           three fixtures, picked by clientId

@@ -40,7 +40,7 @@ pnpm install && pnpm build
 
 # terminal 1 — start the mock backend
 cd examples/mock-mch
-PORT=3000 node server.js
+PORT=3000 node server.cjs
 
 # terminal 2 — build and run the MCP server
 cd examples/mcp-sample

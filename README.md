@@ -32,7 +32,7 @@ the published package:
 
 - **`examples/mock-mch/`** — a tiny zero-dependency Node HTTP server that
   serves canned fixtures for the MCH OpenAPI surface. Start it with
-  `PORT=3000 node server.js`.
+  `PORT=3000 node server.cjs`.
 - **`examples/mcp-sample/`** — a minimal MCP server that wires this library
   end-to-end against the mock backend (parses an OpenAPI spec, builds tool
   definitions, registers AJV filters, dispatches `tools/call` through
