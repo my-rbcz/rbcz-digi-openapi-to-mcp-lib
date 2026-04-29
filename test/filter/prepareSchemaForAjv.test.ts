@@ -43,7 +43,7 @@ describe("prepareSchemaForAjv", () => {
         expect(out.properties.items.items.additionalProperties).toBe(false);
     });
 
-    it("does NOT recurse into oneOf / anyOf / allOf branches", () => {
+    it("does NOT recurse into oneOf / anyOf branches", () => {
         const out = prepareSchemaForAjv({
             oneOf: [
                 { type: "object", properties: { a: { type: "string" } } },
@@ -53,6 +53,50 @@ describe("prepareSchemaForAjv", () => {
         // Branches are kept as-is — no `additionalProperties: false` injected.
         expect(out.oneOf[0]).not.toHaveProperty("additionalProperties");
         expect(out.oneOf[1]).not.toHaveProperty("additionalProperties");
+    });
+
+    it("hoists allOf branch properties into the parent before locking", () => {
+        const out = prepareSchemaForAjv({
+            type: "object",
+            allOf: [
+                { type: "object", properties: { title: { type: "string" }, firstName: { type: "string" } } },
+                { type: "object", properties: { loginName: { type: "string" } } },
+            ],
+        }) as any;
+
+        // Parent gets locked AND the merged properties are present so
+        // AJV's removeAdditional has something to keep.
+        expect(out.additionalProperties).toBe(false);
+        expect(Object.keys(out.properties).sort()).toEqual(["firstName", "loginName", "title"]);
+
+        // allOf branches themselves are left unlocked — locking them would
+        // make AJV strip valid keys out of the matching data.
+        expect(out.allOf[0]).not.toHaveProperty("additionalProperties");
+        expect(out.allOf[1]).not.toHaveProperty("additionalProperties");
+    });
+
+    it("allOf hoist: parent's own properties win on conflict", () => {
+        const parentSchema = { type: "string", description: "parent wins" };
+        const out = prepareSchemaForAjv({
+            type: "object",
+            properties: { id: parentSchema },
+            allOf: [{ type: "object", properties: { id: { type: "number" } } }],
+        }) as any;
+        expect(out.properties.id.type).toBe("string");
+    });
+
+    it("allOf hoist: recurses through nested allOf", () => {
+        const out = prepareSchemaForAjv({
+            type: "object",
+            allOf: [
+                {
+                    allOf: [
+                        { type: "object", properties: { deep: { type: "string" } } },
+                    ],
+                },
+            ],
+        }) as any;
+        expect(out.properties.deep).toEqual({ type: "string" });
     });
 
     it("lowers nullable: true on nested fields", () => {
