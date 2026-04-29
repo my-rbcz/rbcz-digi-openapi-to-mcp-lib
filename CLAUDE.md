@@ -12,6 +12,24 @@ the user explicitly asks about it, references a file under it by path, or
 asks you to write to it. If a spec there is relevant to the task at hand,
 the user will point you at it.
 
+## `examples/` is illustrative, not library code
+
+`examples/mock-mch/` is a sample backend HTTP server (no deps, plain Node).
+`examples/mcp-sample/` is a sample MCP server that exercises this library
+end-to-end. Both are standalone Node packages with their own `package.json`
+and `pnpm install` lifecycle, and `examples/mcp-sample/` depends on the
+library via `"rbcz-digi-openapi-to-mcp-lib": "file:../.."`. They exist to
+demonstrate usage and are **not part of the library's public surface**.
+
+When working on the library itself (changes under `src/` or `test/`), do not
+scan `examples/` — it will not change the library's behaviour and will only
+add noise. Touch `examples/` only when the user explicitly asks about the
+sample server, the mock backend, or the example wiring.
+
+`examples/` is excluded from the published tarball by `files: ["dist"]` in
+`package.json` — verify with `pnpm pack --dry-run` after any change that
+might affect publishing.
+
 ## Commands
 
 Package manager is **pnpm** (see `pnpm-lock.yaml`).

@@ -1,0 +1,23 @@
+{
+  "addresses": [
+    {
+      "id": "addr-100",
+      "addressee": "Jana Dvorakova",
+      "street": "Namesti Miru",
+      "number": "5",
+      "city": "Brno",
+      "postalCode": "60200",
+      "country": "CZ",
+      "type": "PERMANENT"
+    }
+  ],
+  "emails": [],
+  "phones": [
+    {
+      "id": "phone-100",
+      "contact": "420604555666",
+      "type": "MOBILE_NUMBER",
+      "name": "Jana Dvorakova"
+    }
+  ]
+}

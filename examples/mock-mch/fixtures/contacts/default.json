@@ -1,0 +1,45 @@
+{
+  "addresses": [
+    {
+      "id": "addr-001",
+      "addressee": "Martin Novak",
+      "street": "Hvezdova",
+      "number": "127",
+      "city": "Praha",
+      "postalCode": "14000",
+      "country": "CZ",
+      "type": "PERMANENT"
+    },
+    {
+      "id": "addr-002",
+      "addressee": "Martin Novak",
+      "street": "Vinohradska",
+      "number": "10",
+      "city": "Praha",
+      "postalCode": "12000",
+      "country": "CZ",
+      "type": "CONTACT"
+    }
+  ],
+  "emails": [
+    {
+      "id": "email-001",
+      "contact": "martin.novak@example.com",
+      "name": "Martin Novak"
+    }
+  ],
+  "phones": [
+    {
+      "id": "phone-001",
+      "contact": "420777111222",
+      "type": "MOBILE_NUMBER",
+      "name": "Martin Novak"
+    },
+    {
+      "id": "phone-002",
+      "contact": "420222333444",
+      "type": "LANDLINE_NUMBER",
+      "name": "Martin Novak"
+    }
+  ]
+}

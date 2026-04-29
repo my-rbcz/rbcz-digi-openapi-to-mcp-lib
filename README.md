@@ -25,6 +25,24 @@ pnpm test
 pnpm coverage
 ```
 
+## Examples
+
+Two runnable sample projects live under `examples/` and are **not** part of
+the published package:
+
+- **`examples/mock-mch/`** — a tiny zero-dependency Node HTTP server that
+  serves canned fixtures for the MCH OpenAPI surface. Start it with
+  `PORT=3000 node server.js`.
+- **`examples/mcp-sample/`** — a minimal MCP server that wires this library
+  end-to-end against the mock backend (parses an OpenAPI spec, builds tool
+  definitions, registers AJV filters, dispatches `tools/call` through
+  `executeToolCall`). It depends on the library via `file:../..`, so build
+  the lib first (`pnpm build` at the repo root), then `pnpm install && pnpm
+  build && pnpm start` from `examples/mcp-sample/`.
+
+See each example's `README.md` for details. They are excluded from the
+published tarball by `files: ["dist"]`.
+
 ## Quickstart
 
 ```ts

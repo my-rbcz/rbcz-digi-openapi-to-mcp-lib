@@ -1,0 +1,2684 @@
+openapi: 3.0.0
+info:
+  version: 7.0-SNAPSHOT
+  title: RBCZ
+  description: 'Consolidated API for RBCZ MCP/API server'
+  license:
+    name: MIT
+    url: http://github.com/gruntjs/grunt/blob/master/LICENSE-MIT
+paths:
+  /clients:
+    get:
+      summary: List of clients
+      description: |
+        CALL THIS FIRST, to get clientId of preferred client (preferred=true) and use it for subsequent calls.
+      #parameters:
+      #- name: multicontext
+      #  description: do not use
+      #  in: query
+      #  required: false
+      #  example: true
+      #  schema:
+      #    type: boolean
+      operationId: List of clients
+      responses:
+        '200':
+          description: |
+            Available clients for currently logged user and user authentication method. If multicontext query param is set to true and multicontext is enabled (based on business rules), then response also contains artifical client with clientId=-1 and multicontextClient=true.
+          content:
+            application/json:
+              schema:
+                properties:
+                  clients:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClientSegment'
+                  #currentAuthMethod:
+                    #description: a name of the a user currently used authentication
+                      #method
+                    #type: string
+                required:
+                - clients
+                #- currentAuthMethod
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /contacts:
+    get:
+      description: |
+        Get contacts (address, phone, email) for given client id.
+        Allways call withClientContacts=false and withUserContacts=true
+      summary: Get contacts for client and user
+      operationId: Get contacts for client and user
+      parameters:
+      - name: clientId
+        in: query
+        required: true
+        #description: the selected client context
+        schema:
+          type: number
+          format: double
+      - name: withClientContacts
+        in: query
+        required: false
+        description: alway set to false
+        schema:
+          type: boolean
+      - name: withUserContacts
+        in: query
+        required: false
+        description: alway set to true
+        schema:
+          type: boolean
+      #- name: phoneType
+      #  in: query
+      #  required: false
+      #  description: optional filter phone numbers by its type MOBILE_NUMBER, LANDLINE_NUMBER or FAX_NUMBER
+      #  schema:
+      #    type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetContactsForClientAndUserResponse'
+      x-unitTests:
+      - request:
+          method: GET
+          uri: /contacts?clientId=2&withClientContacts=true&withUserContacts=true&phoneType=MOBILE_NUMBER
+        expectedResponse:
+          x-allowExtraHeaders: true
+          x-bodyMatchMode: RAW
+          x-arrayOrderedMatching: false
+          x-arrayCheckCount: false
+          x-matchResponseSchema: true
+          headers:
+            Content-Type: application/json
+          body: '{    "addresses":        [{ "id":"12k12k21k21k1", "clientPreferred":"true",
+            "userPreferred":"false", "addressee":"Alfons NovĂˇk",            "specification":"u
+            panĂ­ NovĂ©",                         "street":"KavÄŤĂ­ hory",            "number":"50",
+            "city":"Praha", "postalCode":"14000", "country":"CZ"        }], "emails":        [{
+            "id":"981j291981", "contact":"bfu@bsc-ideas.com", "clientPreferred":"true",
+            "userPreferred":"false"        }],    "phones": [{ "id":"a89a8080a", "contact":"420123456789",
+            "clientPreferred":"true", "userPreferred":"false", "type":"MOBILE_NUMBER"
+            }]}'
+        x-testShouldPass: true
+        x-testEnabled: true
+        x-testName: Get contacts for client and user1
+        x-testDescription: |-
+          Get contacts from siebel for client and user.
+          Note: if withClientContacts and withUserContacts are both set to false, then empty collections will be returned.
+          Success Response payload:
+          - `addresses` (Array[], M): addresses collections, always present (even empty)
+              - `id` (String, M): the unique id of address contact
+              - `clientPreferred` (Boolean, O): if this address is preferred by client
+              - `userPreferred` (Boolean, O): if this address is preferred by user
+              - `addressee` (String, O): the addressee
+              - `specification` (String, O): the detail of specification
+              - `street` (String, O): the street
+              - `number` (String, O): the number
+              - `city` (String, O): the city
+              - `postalCode` (String, O): the postal code
+              - `country` (String, O): the country (ISO format, e.g.: CZ), from catalog Countries (see /catalogs/Countries)
+          - `emails` (Array[], M): emails collections, always present (even empty)
+              - `id` (String, M): the unique id of email contact
+              - `contact` (String, O): the e-mail adddress
+              - `clientPreferred` (Boolean, O): if this phone is preferred by client
+              - `userPreferred` (Boolean, O): if this phone is preferred by user
+          - `phones` (Array[], M): phones collections, always present (even empty)
+              - `id` (String, M): the unique id of phone contact
+              - `contact` (String, O): the telephone number
+              - `clientPreferred` (Boolean, O): if this phone is preferred by client
+              - `userPreferred` (Boolean, O): if this phone is preferred by user
+              - `type` (String, M): values from catalog ContactType (see /catalogs/ContactType)
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /user/info:
+    get:
+      description: Info for currently logged user and given client id, e.g. login name (e.g. klientské číslo)
+      summary: Get info about currently logged user
+      parameters:
+      - $ref: '#/components/parameters/AuthorizationHeader'
+      - $ref: '#/components/parameters/MultiContextClientIdQueryParam'
+      #- in: query
+        #name: loadRSTSDetail
+        #description: Flag to load RSTS detail
+        #schema:
+          #type: boolean
+          #default: false
+      responses:
+        '200':
+          description: Information about currently logged user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInfoResponse'
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /catalogs/bulk:
+    post:
+      description: To translaste numerical CATALOG codes to human readable values. It support bulk transaction.
+      summary: List of catalog values for required catalogs
+      parameters:
+      - $ref: '#/components/parameters/AuthorizationHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/BulkCatalogValuesRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BulkCatalogValuesResponse'
+        '400':
+          description: Input error - missing or malformed parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/401'
+        '500':
+          $ref: '#/components/responses/500'
+  /accounts:
+    get:
+      description: List of accounts (current, savings, tied, escrow, hedging, protected) for client id.
+      summary: Accounts list
+      parameters:
+      - $ref: '#/components/parameters/AuthorizationHeader'
+      - $ref: '#/components/parameters/MultiContextClientIdQueryParam'
+      #- name: withAccGroups
+      #  description: |
+      #    List of account groups. If present, only accounts with group within given group list are returned. If account group is not in group list, the account is removed from result. Only one of optional parameters (withAccGroups and withoutAccGroups) is expected. In case both parameters are sent, only withAccGroups is taken into account.
+      #  in: query
+      #  required: false
+      #  style: form
+      #  explode: false
+      #  schema:
+      #    type: array
+      #    items:
+      #      type: string
+      #      enum:
+      #       - CURRENT
+      #       - SAVINGS
+      #       - TIED
+      #       - ESCROW
+      #       - HEDGING
+      #       - PROTECTED
+      #       x-example: TIED
+      # - name: withoutAccGroups
+      #   description: |
+      #     List of account groups. If present, all accounts with group from the list are removed from the result set. If accounts group is not defined in the group list, the account is kept in the result set.
+      #   in: query
+      #   required: false
+      #   style: form
+      #   explode: false
+      #   schema:
+      #     type: array
+      #     items:
+      #       type: string
+      #       enum:
+      #       - CURRENT
+      #       - SAVINGS
+      #       - TIED
+      #       - ESCROW
+      #       - HEDGING
+      #       - PROTECTED
+      #       x-example: HEDGING
+      # - name: withoutBalances
+      #   description: |
+      #     Flag indicating to not fetch currency folders for accounts. If set to true, then this method does not call TIF, but only fetches all information from database.
+      #   in: query
+      #   required: false
+      #   example: true
+      #   schema:
+      #     type: boolean
+      responses:
+        '200':
+          description: List (even empty) is returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountsOverviewResponse'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+  /accounts/{accountId}:
+    get:
+      description: Detail (price program/account type, interest rate tiers, conditions for bonus rates, insurrance) of account for given account id and client id.
+      summary: Account detail
+      parameters:
+      - $ref: '#/components/parameters/AuthorizationHeader'
+      - $ref: '#/components/parameters/ClientIdQueryParam'
+      - name: accountId
+        #description: The id of account
+        in: path
+        required: true
+        x-asd-attribute: null
+        example: 5
+        schema:
+          type: integer
+          format: int64
+      - name: interestRateBonusValidation
+        description: ALWAYS set to true for SAVINGS accounts, and false otherwise.
+        in: query
+        required: false
+        schema:
+          type: boolean
+          example: true (1)
+          x-asd-attribute: null
+          x-example: true
+      responses:
+        '200':
+          description: Successful response with account details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDetailResponse'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+  /debitcards:
+    get:
+      description: List of debit cards for client id.
+      summary: Get list of debit cards
+      parameters:
+      - $ref: '#/components/parameters/AuthorizationHeader'
+      - $ref: '#/components/parameters/ClientIdQueryParam'
+      responses:
+        '200':
+          description: List (even empty) is returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GetListOfDebitCardsResponse'
+        '400':
+          description: Input error (in that case error codes are returned)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+  /debitcards/transactions:
+    post:
+      description: List of debit card transactions for the given client id and debit card id. Supports pagination and sorting. 
+      summary: Get list of debit card transactions
+      parameters:
+      - $ref: '#/components/parameters/AuthorizationHeader'
+      - name: p
+        description: Number of requested page (default value is 1)
+        in: query
+        required: false
+        x-asd-attribute: null
+        example: 1
+        schema:
+          type: string
+      - name: s
+        description: Size of page (default value is 20). DO NOT EXCEED 500.
+        in: query
+        required: false
+        x-asd-attribute: null
+        example: 20
+        schema:
+          type: string
+      - name: sort
+        description: 'Sorting attributes, use syntax: attribute,(asc|desc)'
+        in: query
+        required: false
+        x-asd-attribute: null
+        example: AccountingAmount,desc
+        schema:
+          type: string
+          enum:
+          - AccountingAmount,desc
+          - AccountingAmount,asc
+          - AccountingDate,desc
+          - AccountingDate,asc
+          - TransactionAmount,desc
+          - TransactionAmount,asc
+          - TransactionDate,desc
+          - TransactionDate,asc
+      #- $ref: '#/components/parameters/NoteFilter'
+      #- $ref: '#/components/parameters/CategoriesFilter'
+      responses:
+        '200':
+          description: List (even empty) is returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetListOfDebitCardTransactionsResponse'
+        '400':
+          description: Input error (in that case error codes are returned)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetListOfDebitCardTransactionsRequest'
+        required: true
+servers:
+- url: http://www.example.com/
+components:
+  responses:
+    '500':
+      description: Unexpected error, user logout as potential security risk
+      content:
+        '*/*':
+          schema:
+            $ref: '#/components/schemas/ErrorResponseBase'
+    '403':
+      description: User is not authorized to perform the operation.
+      content:
+        '*/*':
+          schema:
+            $ref: '#/components/schemas/ErrorResponseBase'
+    '401':
+      description: Authentication or re-authentication of the user is required
+      headers:
+        WWW-Authenticate:
+          description: Contains base of URL for creation of authentication request
+          x-example: https://gaas.bank.com/authorize
+          schema:
+            type: string
+      content:
+        '*/*':
+          schema:
+            type: object
+    '400':
+      description: Input error (in that case error codes are returned)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponseBase:
+      description: Stores basic error attributes
+      type: object
+      required:
+      - status
+      - errorUuid
+      properties:
+        status:
+          description: Response HTTP status code
+          type: integer
+          format: int32
+          x-example: 400
+        errorUuid:
+          description: Unique ID of error occurrence
+          type: string
+          format: uuid
+          x-example: f81d4fae-7dec-11d0-a765-00a0c91e6bf6
+        errorDescription:
+          description: Description of error, it may be be used or should by use only
+            in develop mode
+          type: string
+    ErrorResponse:
+      description: Stores validation error attributes, extends ErrorResponseBase
+      required:
+      - error
+      allOf:
+      - $ref: '#/components/schemas/ErrorResponseBase'
+      - type: object
+        properties:
+          error:
+            description: Structured description of the error
+            type: object
+            required:
+            - errorCode
+            properties:
+              errorCode:
+                description: Business error code
+                type: integer
+                x-example: 5000000
+              message:
+                description: Description of business error
+                type: string
+                x-example: Validation errors
+              validationResults:
+                description: List of validation errors found in request data
+                type: array
+                items:
+                  type: object
+                  required:
+                  - attributeCode
+                  - validatorCode
+                  - messageCode
+                  properties:
+                    attributeCode:
+                      description: Identification of attribute on which error was
+                        found
+                      type: string
+                      x-example: amount
+                    validatorCode:
+                      description: Identification of validator. If "validatorCode"
+                        is "RBCZ", then "messageCode" contains the error code form
+                        common catalog list.
+                      type: string
+                      x-example: NotEmptyValidator
+                    messageCode:
+                      description: Identification of problem found
+                      type: string
+                      x-example: validation.error.NotEmpty
+                    params:
+                      description: List of validation parameters; concrete format
+                        of individual parameters depends on validator
+                      type: array
+                      items:
+                        type: object
+                    translatedText:
+                      description: Problem description
+                      type: string
+    GetListOfDebitCardTransactionsResponse:
+      title: Get list of debit card transactions response
+      type: object
+      required:
+      - content
+      #- exactTotalElements
+      - last
+      #- totalPages
+      #- totalElements
+      #- size
+      #- number
+      #- first
+      - sort
+      #- numberOfElements
+      properties:
+        content:
+          description: List of debit card transactions
+          type: array
+          items:
+            type: object
+            required:
+            - cardId
+            - paymentCardNumber
+            - transactionId
+            - accountCurrency
+            - embossName
+            - debitMovementType
+            - transactionDate
+            - accountingDate
+            - transactionAmount
+            - transactionCurrency
+            - accountingAmount
+            - accountingCurrency
+            - movementGroup
+            properties:
+              cardId:
+                description: ID of debit card (encoded)
+                type: string
+                x-asd-attribute: null
+                x-example: MS4xLkQuMQ
+              paymentCardNumber:
+                description: Masked number of card
+                type: string
+                x-asd-attribute: null
+                x-example: 516861XXXXXX0082
+              transactionId:
+                description: Identification of a transaction for client
+                type: string
+                x-asd-attribute: null
+                x-example: id123
+              accountCurrency:
+                description: Account currency - posting currency (e.g. CZK, EUR)
+                type: string
+                x-asd-attribute: null
+                x-example: CZK
+              embossName:
+                description: Card holder name
+                type: string
+                x-asd-attribute: null
+                x-example: embossed name
+              debitMovementType:
+                description: 'Type of transaction (CATALOG: AccountMovementTypes)'
+                type: string
+                x-asd-attribute: null
+                x-catalog: AccountMovementTypes
+                x-example: 1
+              description:
+                description: Description of transaction
+                type: string
+                x-asd-attribute: null
+                x-example: null
+              transactionDate:
+                description: Date and time of transaction/origination
+                type: string
+                format: date-time
+                x-asd-attribute: null
+                x-example: '2016-03-15T10:50:39.000+01:00'
+              accountingDate:
+                description: Date and time of accounting/posting
+                type: string
+                format: date-time
+                x-asd-attribute: null
+                x-example: '2016-03-15T10:50:39.000+01:00'
+              transactionAmount:
+                description: transaction/origination amount
+                type: number
+                format: decimal
+                x-asd-attribute: null
+                x-example: 20
+              transactionCurrency:
+                description: 'Currency of transaction/origination (e.g. CZK, EUR, USD, etc.)'
+                type: string
+                minLength: 3
+                maxLength: 3
+                x-asd-attribute: null
+                x-catalog: CURRENCIES
+                x-example: CZK
+              accountingAmount:
+                description: accounting/posting amount
+                type: number
+                format: decimal
+                x-asd-attribute: null
+                x-example: 20
+              accountingCurrency:
+                description: 'Accounting/posting currency of transaction (e.g. CZK, EUR, USD, etc.)'
+                type: string
+                minLength: 3
+                maxLength: 3
+                x-asd-attribute: null
+                x-catalog: CURRENCIES
+                x-example: CZK
+              # migratedAccountNumber:
+              #   description: Account number of migrated account from other banks (Equa...)
+              #   type: object
+              #   properties:
+              #     accountNumber:
+              #       description: Main part of the account number
+              #       type: string
+              #     accountNumberPrefix:
+              #       description: Account number prefix
+              #       type: string
+              #     bankCode:
+              #       description: Account number bank code
+              #       type: string
+              note:
+                $ref: '#/components/schemas/TransactionNote'
+              merchant:
+                $ref: '#/components/schemas/MerchantInformation'
+              # categoryId:
+              #   description: The id of transaction category
+              #   type: string
+              movementGroup:
+                description: 'Group/Type of the transaction (CATALOG: AccountMovementGroups)'
+                type: string
+                x-asd-attribute: null
+                x-example: '4'
+              wallet:
+                $ref: '#/components/schemas/WalletInfo'
+        # amountSumsByCurrency:
+        #   description: Summed amounts of all movements by currency, separately for
+        #     incoming and outgoing (as a map).
+        #   type: object
+        #   additionalProperties:
+        #     type: array
+        #     items:
+        #       $ref: '#/components/schemas/CurrencyAndAmount'
+        # exactTotalElements:
+        #   description: ''
+        #   type: boolean
+        #   x-asd-attribute: null
+        #   x-example: true
+        # totalElements:
+        #   description: The total number of items
+        #   type: integer
+        #   format: int32
+        #   x-asd-attribute: null
+        #   x-example: 1
+        last:
+          description: If true, there is no next page.
+          type: boolean
+          x-asd-attribute: null
+          x-example: true
+        # totalPages:
+        #   description: The total number of pages
+        #   type: integer
+        #   format: int32
+        #   x-asd-attribute: null
+        #   x-example: 1
+        # size:
+        #   description: The size of one page
+        #   type: integer
+        #   format: int32
+        #   x-asd-attribute: null
+        #   x-example: 15
+        # number:
+        #   description: The identifier of page
+        #   type: integer
+        #   format: int32
+        #   x-asd-attribute: null
+        #   x-example: 0
+        # first:
+        #   description: Is it the first page
+        #   type: boolean
+        #   x-asd-attribute: null
+        #   x-example: true
+        sort:
+          description: Sorting specification
+          type: string
+          x-asd-attribute: null
+          x-example: null
+        # numberOfElements:
+        #   description: The number of elements in this page
+        #   type: integer
+        #   format: int32
+        #   x-asd-attribute: null
+        #   x-example: 1
+    CurrencyAndAmount:
+      description: Common object for transferring currency and amount info
+      type: object
+      required:
+      - amount
+      - currencyId
+      properties:
+        amount:
+          type: number
+          format: decimal
+          description: amount
+        currencyId:
+          $ref: '#/components/schemas/CurrencyId'
+    WalletInfo:
+      description: Wallet information
+      type: object
+      properties:
+        walletProviderId:
+          description: |
+            The ID of the wallet provider:
+              1 - Apple Pay
+              2 - Garmin Pay
+              3 - Google Pay
+              4 - FitBit Pay
+              5 - RaiPay
+              6 - Wallet
+              7 - Google Pay SE
+              8 - Xiaomi
+              9 - Fidesmo
+              10 - Zepp
+              11 - Digiseq
+              12 - Swatch
+          type: integer
+          format: int32
+          example: 3
+    TransactionNote:
+      description: The user-edited transaction note. Note length has maximum 100 characters.
+      type: string
+      maxLength: 100
+      x-asd-attribute: ACCT34
+      example: Potraviny
+    MerchantInformation:
+      #description: Information about merchant
+      type: object
+      properties:
+        name:
+          description: Name of the merchant
+          type: string
+          example: Food garden Kavčí hory
+          x-asd-attribute: MAD1
+        logoUrl:
+          description: Link to the image
+          type: string
+          example: https://example.com/someMerchantLogo.png
+          x-asd-attribute: MAD2
+        street:
+          description: Merchant shop's street address
+          type: string
+          example: Na Hřebenech II 1718/10
+          x-asd-attribute: MAD3
+        postCode:
+          description: Merchant shop's post code
+          type: string
+          example: 140 21
+          x-asd-attribute: MAD5
+        city:
+          description: Merchant shop's city name
+          type: string
+          example: Praha 4
+          x-asd-attribute: MAD6
+        country:
+          description: Merchant shop's country
+          type: string
+          example: CZ
+          x-catalog: COUNTRIES
+          x-asd-attribute: MAD7
+        gpsCoordinates:
+          #description: GPS coordinates of the shop
+          type: object
+          required:
+          - latitude
+          - longitude
+          properties:
+            latitude:
+              #description: Merchant shop's GPS latitude location
+              type: number
+              format: double
+              example: 50.0518111
+              x-asd-attribute: MAD8
+            longitude:
+              #description: Merchant shop's GPS longitude location
+              type: number
+              format: double
+              example: 14.431615
+              x-asd-attribute: MAD9
+        shopUrl:
+          description: Merchant URL
+          type: string
+          example: https://www.czc.cz
+          x-asd-attribute: MAD10
+        googlePlaceId:
+          description: Google Place ID
+          type: string
+          example: ChIJnfsgrpWPCUcRLBvzKUJEZSQ
+          x-asd-attribute: MAD11
+    CurrencyId:
+      title: 'The currency id (CATALOG: CURRENCIES)'
+      type: string
+      minLength: 3
+      maxLength: 3
+      x-catalog: CURRENCIES
+      x-example: CZK
+    GetListOfDebitCardTransactionsRequest:
+      title: Get list of debit card transactions request
+      type: object
+      required:
+      - clientId
+      - accountId
+      - cardId
+      properties:
+        advancedFilter:
+          description: Flag that advanced filtering is applied
+          type: boolean
+        clientId:
+          description: User client Id. Return transactions for given client only
+          type: integer
+          format: int32
+          x-asd-attribute: CLI1
+          x-example: 2
+        accountId:
+          description: Account Id. Return transactions for given account only
+          type: integer
+          format: int64
+          x-asd-attribute: null
+          x-example: 3
+        cardId:
+          description: Card id (encoded)
+          type: string
+          x-asd-attribute: null
+          x-example: MS4xLkQuMQ
+        #OfDetail:
+        #  $ref: '#/components/schemas/LevelOfDetail'
+        dateFrom:
+          #description: Starting of the date range.
+          type: string
+          format: date
+          x-asd-attribute: null
+          x-example: '2000-01-31'
+        dateTo:
+          #description: End of the date range.
+          type: string
+          format: date
+          x-asd-attribute: null
+          x-example: '2100-01-31'
+        transactionAmountFrom:
+          description: Minimal original/authorization amount
+          type: number
+          format: decimal
+          x-asd-attribute: null
+          x-example: 100
+        transactionAmountTo:
+          description: Maximal original/authorization amount
+          type: number
+          format: decimal
+          x-asd-attribute: null
+          x-example: 100000
+        transactionCurrencies:
+          description: 'Original/authorization currencies to filter (CZK, EUR, USD, etc.)'
+          type: array
+          x-asd-attribute: null
+          items:
+            type: string
+            minLength: 3
+            maxLength: 3
+            x-asd-attribute: null
+            x-catalog: CURRENCIES
+            x-example: CZK
+        excludeCurrencies:
+          description: If true, exclude transactions with currencies listed in transactionCurrencies
+          type: boolean
+          x-asd-attribute: null
+          x-example: false
+        accountingAmountFrom:
+          description: Minimal posting amount
+          type: number
+          format: decimal
+          x-asd-attribute: null
+          x-example: 100
+        accountingAmountTo:
+          description: Maximal posting amount
+          type: number
+          format: decimal
+          x-asd-attribute: null
+          x-example: 100000
+        accountingCurrency:
+          description: 'Movement accounting/posting currency (ISO, CATALOG: CURRENCIES)'
+          type: string
+          minLength: 3
+          maxLength: 3
+          x-asd-attribute: null
+          x-catalog: CURRENCIES
+          x-example: CZK
+        # transactionCategory:
+        #   description: 'The transaction category code (CATALOG: CARDTRANSACTIONCATEGORIES)'
+        #   type: integer
+        #   format: int32
+        #   x-asd-attribute: null
+        #   x-catalog: CARDTRANSACTIONCATEGORIES
+        #   x-example: ''
+        fullText:
+          description: Search full text in transaction description
+          type: string
+          x-asd-attribute: null
+          x-example: full text
+        merchantName:
+          description: Filter by merchant name
+          type: string
+          example: Food
+    LevelOfDetail:
+      description: 'Level of data detail to be returned in response. Default value:
+        FULL'
+      type: string
+      enum:
+      - BASIC
+      - FULL
+      example: BASIC
+    GetListOfDebitCardsResponse:
+      title: Get list of debit cards response
+      type: object
+      required:
+      - cardId
+      - accountId
+      - cardTypeCode
+      - number
+      - status
+      - preferred
+      - validFrom
+      - validTo
+      - limits
+      - nickName
+      # - defaultNickNameCode
+      # - defaultNickName
+      - imageUrl
+      - loggedUserIsHolder
+      - activationEligibility
+      - cardForm
+      #- way4Card
+      properties:
+        activationEligibility:
+          $ref: '#/components/schemas/ActivationEligibility'
+        cardId:
+          description: Unique ID of debit card (encoded)
+          type: string
+          x-example: a2FydGE0LjEyMy00NDQtNzg5LkQuMw
+        accountId:
+          description: account ID associated with debit card
+          type: integer
+          format: int64
+          x-example: 3
+        cardTypeCode:
+          description: 'Code of card type (CATALOG: DebitCardType)'
+          type: string
+          x-asd-attribute: DC3
+          x-catalog: DebitCardType
+          x-example: RBMCBP
+        number:
+          description: Masked card number
+          type: string
+          x-asd-attribute: DC1
+          x-example: 123-444-789
+        status:
+          description: 'Status code of card (CATALOG: DebitCardStatus)'
+          type: string
+          x-asd-attribute: DC2
+          x-catalog: DebitCardStatus
+          x-example: 9
+        preferred:
+          description: Is this card preferred?
+          type: boolean
+          x-example: false
+        embossedName:
+          description: Card holder name
+          type: string
+          x-asd-attribute: DC4
+          x-example: Pepek Vyskoč karta 4
+        validFrom:
+          description: Valid from
+          type: string
+          format: date
+          x-example: '2012-12-13'
+        validTo:
+          description: Valid to
+          type: string
+          format: date
+          x-asd-attribute: DC7
+          x-example: '2012-12-13'
+        limits:
+          $ref: '#/components/schemas/CardLimit'
+        nickName:
+          description: Card nick name
+          type: string
+          x-asd-attribute: DC10
+          x-example: Business PREMIUM Mastercard
+        # defaultNickNameCode:
+        #   description: The default card name code - deprecated, use defaultNickName
+        #     instead
+        #   type: string
+        #   x-example: TXT_PNN_001
+        # defaultNickName:
+        #   description: The localized default card name
+        #   type: string
+        #   x-asd-attribute: PNN1
+        #   x-example: Debetní karta
+        imageUrl:
+          description: Complete url to card image
+          type: string
+          x-example: http://rbcz-multi-01.bscpraha.cz/web/assets/images/cards/debit/RBMCBP.png
+        insurances:
+          $ref: '#/components/schemas/insurances'
+        allowedCardInsurances:
+          $ref: '#/components/schemas/allowedCardInsurances'
+        loggedUserIsHolder:
+          $ref: '#/components/schemas/LoggedUserIsHolder'
+        distributionDate:
+          description: Date of card distribution
+          type: string
+          format: date
+        cardForm:
+          description: V - Virtual, P - Plastic
+          type: string
+          example: V
+        # way4Card:
+        #   description: Is card Way4 card
+        #   type: boolean
+        #   example: false
+        accountNumber:
+          description: Account number associated with debit card
+          type: object
+          properties:
+            accountNumber:
+              description: Account number
+              type: string
+              example: '3612671001'
+            accountNumberPrefix:
+              description: Account number prefix
+              type: string
+              nullable: true
+              example: null
+            bankCode:
+              description: Bank code
+              type: string
+              example: '5500'
+        allowEcommerceChange:
+          description: Flag if e-commerce paymentssettings can be changed
+          type: boolean
+          example: true
+        eCommerceActivated:
+          description: Flag if e-commerce payments are activated
+          type: boolean
+          example: true
+    LoggedUserIsHolder:
+      description: If user is also a card holder
+      type: boolean
+      example: false
+    insurances:
+      description: List of current insurances.
+      type: object
+      x-asd-attribute: null
+      x-catalog: INSURANCE_PURPOSE_CODES
+      example: TRAVEL
+      additionalProperties:
+        type: object
+        required:
+        - insurancePurposeCode
+        - insuranceProductCode
+        - insuranceMandatory
+        - insuranceDefault
+        - validFrom
+        - validTo
+        - offerFrom
+        - offerTo
+        properties:
+          insurancePurposeCode:
+            description: 'Insurance purpose code (CATALOG: DebitCardComplServiceType)'          
+            type: string
+            x-asd-attribute: null
+            x-catalog: DebitCardComplServiceType
+            example: TRAVEL
+          insuranceProductCode:
+            description: 'Insurance product code (CATALOG: DebitCardComplServiceStatus)'
+            type: string
+            x-asd-attribute: null
+            x-catalog: DebitCardComplServiceStatus
+            example: K4P
+          # consentCode:
+          #   description: code of the consent for the insurance
+          #   type: string
+          #   x-catalog: CONSENTS
+          #   example: debitCardInsurance_STD
+          insuranceMandatory:
+            description: Insurance is mandatory (cannot change to without insurance)
+            type: boolean
+            x-asd-attribute: null
+            example: false
+          insuranceDefault:
+            description: Insurance is offered by default
+            type: boolean
+            x-asd-attribute: null
+            example: false
+          validFrom:
+            #description: Valid from
+            type: string
+            format: date
+            x-asd-attribute: null
+            example: '2010-07-07'
+          validTo:
+            #description: Valid to
+            type: string
+            format: date
+            x-asd-attribute: null
+            example: '2999-01-01'
+          offerFrom:
+            #description: Offer from
+            type: string
+            format: date
+            x-asd-attribute: null
+            example: '2010-07-07'
+          offerTo:
+            #description: Offer to
+            type: string
+            format: date
+            x-asd-attribute: null
+            example: '2999-01-01'
+          price:
+            description: Price of the insurance per month
+            type: number
+            format: decimal
+            example: 50
+          publicWebUrl:
+            description: More info about insurance
+            type: string
+            example: https://www.rb.cz/attachments/pojisteni/Osobni-strazce-pojistna-smlouva-2734323143.pdf
+          # insuranceAlwaysVisible:
+          #   description: Flag if this insurance should be always visible
+          #   type: boolean
+          #   example: true
+          insuranceCompany:
+            description: Insurance company
+            type: string
+            example: Uniqa
+    ActivationEligibility:
+      description: Flag if user is eligible to activate card.
+      type: string
+      enum:
+      - Y
+      - M
+      - N
+      x-example: Y
+    CardLimit:
+      description: Map of limits. Maps limit type (ATM, POS, GENERAL) to object describing
+        the limit.
+      type: object
+      x-asd-attribute: PCL2/PCL3/PCL4
+      example: GENERAL
+      additionalProperties:
+        type: object
+        required:
+        - limitType
+        - maxAmount
+        - currencyId
+        properties:
+          limitType:
+            description: Limit type
+            type: string
+            enum:
+            - ATM
+            - POS
+            - GENERAL
+            example: GENERAL
+          maxAmount:
+            description: Limit amount
+            type: number
+            format: decimal
+            example: 123.45
+          currencyId:
+            description: 'Currency code of limit (CZK, EUR, USD, etc.)'
+            type: string
+            minLength: 3
+            maxLength: 3
+            x-asd-attribute: PCL8
+            x-catalog: CURRENCIES
+            example: CZK
+          period:
+            description: Always NULL for debit cards
+            type: string
+            x-asd-attribute: PCL1
+            example: null
+    allowedCardInsurances:
+      description: List of possible insurances.
+      type: object
+      x-asd-attribute: null
+      x-catalog: INSURANCE_PURPOSE_CODES
+      example: TRAVEL
+      additionalProperties:
+        type: array
+        items:
+          type: object
+          required:
+          - insurancePurposeCode
+          - insuranceProductCode
+          - insuranceMandatory
+          - insuranceDefault
+          - validFrom
+          - validTo
+          - offerFrom
+          - offerTo
+          properties:
+            insurancePurposeCode:
+              description: 'Insurance purpose code (CATALOG: DebitCardComplServiceType)'
+              type: string
+              x-asd-attribute: null
+              x-catalog: DebitCardComplServiceType
+              example: TRAVEL
+            insuranceProductCode:
+              description: 'Insurance product code (CATALOG: DebitCardComplServiceStatus)'
+              type: string
+              x-asd-attribute: null
+              x-catalog: DebitCardComplServiceStatus
+              example: K4P
+            # consentCode:
+            #   description: code of the consent for the insurance
+            #   type: string
+            #   x-catalog: CONSENTS
+            #   example: debitCardInsurance_STD
+            insuranceMandatory:
+              description: Insurance is mandatory (cannot change to without insurance)
+              type: boolean
+              x-asd-attribute: null
+              example: false
+            insuranceDefault:
+              description: Insurance is offered by default
+              type: boolean
+              x-asd-attribute: null
+              example: false
+            validFrom:
+              #description: Valid from
+              type: string
+              format: date
+              x-asd-attribute: null
+              example: '2010-07-07'
+            validTo:
+              #description: Valid to
+              type: string
+              format: date
+              x-asd-attribute: null
+              example: '2999-01-01'
+            offerFrom:
+              #description: Offer from
+              type: string
+              format: date
+              x-asd-attribute: null
+              example: '2010-07-07'
+            offerTo:
+              #description: Offer to
+              type: string
+              format: date
+              x-asd-attribute: null
+              example: '2999-01-01'
+            price:
+              description: Price of the insurance per month
+              type: number
+              format: decimal
+              example: 50
+            publicWebUrl:
+              description: More info about insurance
+              type: string
+              example: https://www.rb.cz/attachments/pojisteni/Osobni-strazce-pojistna-smlouva-2734323143.pdf
+            # insuranceAlwaysVisible:
+            #   description: Flag if this insurance should be always visible
+            #   type: boolean
+            #   example: true
+            insuranceCompany:
+              description: Insurance company
+              type: string
+              example: UNIQA
+    AccountDetailResponse:
+      title: Account detail response
+      type: object
+      required:
+      - id
+      - preferred
+      - friendlyName
+      #- defaultFriendlyName
+      - accountNumber
+      - bankClearingCode
+      - multiCurrency
+      - status
+      - interestRate
+      - hasAvailableNoticePeriods
+      - canBeTerminatedOnline
+      - limit
+      - mayActivateCurrencyFolder
+      properties:
+        id:
+          description: account id
+          type: integer
+          format: int64
+          example: 3
+        accountName:
+          description: The account name
+          type: string
+          x-asd-attribute: ACC4
+          example: Slovnaft, a.s.
+        preferred:
+          description: Preferred/Main account flag
+          type: string
+          example: true
+        friendlyName:
+          description: The custom account name (set by the current user or generated by system)
+          type: string
+          x-asd-attribute: PNN1
+          example: my first acc
+        #defaultFriendlyName:
+        #  description: The default custom account name
+        #  type: string
+        #  example: Běžný osobní 6760653036
+        accountNumber:
+          description: The account number without prefix in czech format
+          type: string
+          x-asd-attribute: part of ACC7
+          example: 6760653036
+        accountNumberPrefix:
+          description: The account number prefix in czech format
+          type: string
+          x-asd-attribute: part of ACC7
+          example: 191919
+        iban:
+          description: The account number in IBAN format
+          type: string
+          x-asd-attribute: ACC5
+          example: CZ55001234567890
+        bankClearingCode:
+          description: Bank code (kód banky)
+          type: string
+          x-asd-attribute: part of ACC7
+          example: 5500
+        bankBicCode:
+          #description: The bank BIC (SWIFT) code
+          type: string
+          x-asd-attribute: ACC21
+          example: RZBCCZPP
+        mainCurrency:
+          description: 'The main currency (CATALOG: CURRENCIES)'
+          type: string
+          minLength: 3
+          maxLength: 3
+          x-catalog: CURRENCIES
+          example: CZK
+        multiCurrency:
+          description: If true the account supports multicurrency
+          type: boolean
+          x-asd-attribute: ACC18
+          example: true
+        type:
+          description: 'The account type: CURRENT, SAVINGS, TERM (term deposit)'
+          type: string
+          x-asd-attribute: ACC2
+          example: CURRENT
+        specialAccountType:
+          description: 'The special account type: TIED, HEDGING, ESCROW, PROTECTED'
+          type: string
+          enum:
+          - TIED
+          - ESCROW
+          - HEDGING
+          - PROTECTED
+          example: TIED
+        status:
+          description: 'The account status: ACTIVE, TERMINATED, READY_TO_TERMINATE, INACTIVE, UNKNOWN'
+          type: string
+          x-asd-attribute: ACC9
+          example: ACTIVE
+        pricePrograms:
+          description: Price programs/Account types current, future and available for the account. It determinates
+            the fees applied to the account.
+          type: object
+          x-asd-attribute: ACC19
+          properties:
+            active:
+              description: The active price program
+              $ref: '#/components/schemas/PriceProgram'
+            future:
+              description: Future price program (will be only present if some future
+                priceProgram is set)
+              $ref: '#/components/schemas/PriceProgram'
+            available:
+              description: List of available price programs, may be empty
+              type: array
+              items:
+                $ref: '#/components/schemas/PriceProgram'
+        # interestAccount:
+        #   description: The account for interests of main currency folder (mandatory
+        #     for multicurrency accounts)
+        #   $ref: '#/components/schemas/AccountReference'
+        #   x-asd-attribute: ACC24
+        #   example: 272
+        interestRate:
+          description: The interest rate of main currency folder, day calculation
+          type: number
+          format: decimal
+          example: 5
+        basicInterestRate:
+          description: The basic interest rate
+          type: number
+          format: decimal
+          example: 10
+        individualInterestRate:
+          description: The individual interest if the client has it - it is superior
+            to the basic bonus
+          type: number
+          format: decimal
+          example: 10
+        bonusInterestRate:
+          description: The bonus rate - if a bonus rate is used, the basic interest
+            rate must be added to the bonus rate
+          type: number
+          format: decimal
+          example: 10
+        interestRateFoundsLimitBasic:
+          description: The limit to which the basic interest rate is applied
+          type: number
+          format: decimal
+          example: 20
+        interestRateFoundsLimitBonus:
+          description: The limit to which the bonus interest rate is applied
+          type: number
+          format: decimal
+          example: 15
+        interestRateFoundsLimitIndividual:
+          description: The limit to which the individual interest rate is applied
+          type: number
+          format: decimal
+          example: 30
+        activityConditions:
+          description: activity conditions
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityConditionsResponse'
+        # chargeAccount:
+        #   description: The charge account of main currency folder
+        #   $ref: '#/components/schemas/AccountReference'
+        #   x-asd-attribute: ACC30
+        #   example: 272
+        # currentAccount:
+        #   description: The related current account (for saving accounts)
+        #   $ref: '#/components/schemas/AccountReference'
+        # savingAccounts:
+        #   description: List of related saving accounts (for current accounts)
+        #   type: array
+        #   items:
+        #     $ref: '#/components/schemas/AccountReference'
+        insurances:
+          description: Insurances associated with the account
+          type: array
+          items:
+            $ref: '#/components/schemas/Insurance'
+        availableInsurances:
+          description: List of available insurances
+          type: array
+          items:
+            $ref: '#/components/schemas/AvailableInsurance'
+        # currentNoticePeriod:
+        #   description: The actual account notice period definition
+        #   $ref: '#/components/schemas/NoticePeriod'
+        #   x-asd-attribute: ACC22
+        # futureNoticePeriod:
+        #   description: The next (future) account notice period definition
+        #   $ref: '#/components/schemas/NoticePeriod'
+        #   x-asd-attribute: ACC22
+        relatedOverdraft:
+          description: LoanId of related overdraft
+          type: string
+          example: ''
+        currencyFolders:
+          description: The available currency folders information. Maps currency to
+            description of currency folder.
+          type: object
+          example: CZK
+          additionalProperties:
+            $ref: '#/components/schemas/CurrencyFolderDetail'
+        # hasAvailableNoticePeriods:
+        #   description: Flag if saving account has some available notice periods.
+        #   type: boolean
+        #   example: false
+        # chargeAccountChangeAllowed:
+        #   description: Flag if charge account could be modified.
+        #   type: boolean
+        #   example: true
+        terminationRequestDate:
+          description: Date when the termination request was submitted.
+          type: string
+          format: date
+        canBeTerminatedOnline:
+          #description: Flag if process of online termination can be started.
+          type: boolean
+        # limit:
+        #   description: saving account notice period limit, corresponds to the value
+        #     in SANOTICEPERIOD table.
+        #   type: number
+        # vouchers:
+        #   description: The list of account vouchers
+        #   type: array
+        #   items:
+        #     $ref: '#/components/schemas/AccountVoucher'
+        # mayActivateCurrencyFolder:
+        #   description: flag if the user is allowed to activate a currency folder
+        #   type: boolean
+        interestRateTiers:
+          #description: The list of interest rate tiers
+          type: array
+          items:
+            $ref: '#/components/schemas/InterestRateTierDto'
+    # NoticePeriod:
+    #   title: Account detail response
+    #   type: object
+    #   required:
+    #   - typeId
+    #   - typeCode
+    #   - typeBankCode
+    #   - validFrom
+    #   - validTo
+    #   - uniqueBankRefId
+    #   properties:
+    #     typeId:
+    #       description: 'The id of the notice period type (CATALOG: SANOTICEPERIOD)'
+    #       type: integer
+    #       format: int32
+    #       x-asd-attribute: null
+    #       x-catalog: SANOTICEPERIOD
+    #       x-example: ''
+    #     typeCode:
+    #       description: The UDEBS code of the period; 0 = no period, "114" = 14 days,
+    #         "121" = 21 days; ...
+    #       type: string
+    #       x-asd-attribute: null
+    #       x-example: ''
+    #     typeBankCode:
+    #       description: The RBCZ code of the period; not so important for FE
+    #       type: string
+    #       x-asd-attribute: null
+    #       x-example: ''
+    #     validFrom:
+    #       description: The start date of the validity of this definition
+    #       type: string
+    #       format: date
+    #       x-asd-attribute: null
+    #       x-example: ''
+    #     validTo:
+    #       description: The end date of the validity of this definition (inclusive)
+    #       type: string
+    #       format: date
+    #       x-asd-attribute: null
+    #       x-example: ''
+    #     uniqueBankRefId:
+    #       description: The unique bank reference id of this definition (needed for
+    #         cancelling future ones)
+    #       type: string
+    #       x-asd-attribute: null
+    #       x-example: ''
+    InterestRateTierDto:
+      description: Tier rate object representation for account detail
+      allOf:
+      - $ref: '#/components/schemas/InterestRateTier'
+      - type: object
+        required:
+        - balance
+        #- displayInDetail
+        properties:
+          balance:
+            description: The balance amount within the tier boundaries.
+            type: number
+            example: 100000
+          # displayInDetail:
+          #   description: |
+          #     A boolean flag that indicates whether the rate object should be displayed in detail table. Is evaluated as true if
+          #   type: boolean
+          #   example: true
+    CurrencyFolderDetail:
+      title: Account currency folder info with full details (balances, interest/charge
+        account)
+      description: Contains information about account currency folder full details
+        (balances, interest/charge account)
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/CurrencyFolder'
+      properties:
+        interestAccount:
+          #description: The interest account
+          $ref: '#/components/schemas/AccountReference'
+          x-asd-attribute: ACC24
+        interestRate:
+          #description: The interest rate
+          type: number
+          format: decimal
+          example: 5
+        chargeAccount:
+          #description: The charge account
+          $ref: '#/components/schemas/AccountReference'
+          x-asd-attribute: ACC30
+    AccountReference:
+      title: Account reference
+      type: object
+      required:
+      - accountNumber
+      properties:
+        id:
+          description: The id of the account - only filled when the account is a client
+            account (the current user can view it)
+          type: integer
+          format: int64
+          x-asd-attribute: null
+          x-example: ''
+        accountNumber:
+          description: The account number of the account
+          type: string
+          x-asd-attribute: null
+          x-example: ''
+        accountNumberPrefix:
+          description: The account number prefix of the account
+          type: string
+          x-asd-attribute: null
+          x-example: ''
+    AvailableInsurance:
+      title: Available Account Insurance
+      type: object
+      required:
+      - typeId
+      - variantId
+      - consentCode
+      - offerFrom
+      - offerTo
+      properties:
+        typeId:
+          description: 'The id of the insurance type (CATALOG: INSURANCETYPES)'
+          type: integer
+          format: int32
+          x-asd-attribute: null
+          x-catalog: INSURANCETYPES
+          x-example: ''
+        variantId:
+          description: 'The id of the insurance type (CATALOG: INSURANCETYPEVARIANT)'
+          type: integer
+          format: int32
+          x-asd-attribute: null
+          x-catalog: INSURANCETYPEVARIANT
+          x-example: ''
+        consentCode:
+          description: Code of the consent for the insurance
+          type: string
+          x-catalog: CONSENTS
+          example: accountInsurace
+        price:
+          description: Price of the insurance
+          type: object
+          required:
+          - amount
+          - currencyId
+          properties:
+            amount:
+              description: Price amount
+              type: number
+              format: decimal
+              x-example: 500
+            currencyId:
+              $ref: '#/components/schemas/CurrencyId'
+        offerFrom:
+          description: Offer from
+          type: string
+          format: date
+          x-asd-attribute: null
+          example: '2010-07-07'
+        offerTo:
+          description: Offer to
+          type: string
+          format: date
+          x-asd-attribute: null
+          example: '2999-01-01'
+        cmsPathId:
+          description: 'Id of banner path (CATALOG: CMSPath)'
+          type: string
+          example: 23
+    ActivityConditionsResponse:
+      title: Conditions to get activity bonus
+      type: object
+      required:
+      - typeValue
+      - targetValue
+      - actualValue
+      - receiveBonus
+      properties:
+        typeValue:
+          description: Code of condition (DTRCAM = number of payments by card)
+          type: string
+          example: '1'
+        targetValue:
+          description: Target value for fulfilling the condition
+          type: number
+          format: double
+          example: 2.5
+        actualValue:
+          #description: Actual value
+          type: number
+          format: double
+          example: 2.5
+        receiveBonus:
+          description: true if the condition is fulfilled
+          type: boolean
+          example: true
+    # AccountVoucher:
+    #   title: Account voucher
+    #   type: object
+    #   required:
+    #   - code
+    #   - id
+    #   - validFrom
+    #   - validTo
+    #   properties:
+    #     id:
+    #       type: number
+    #       description: Voucher ID.
+    #     code:
+    #       type: string
+    #       description: Voucher code.
+    #     validFrom:
+    #       type: string
+    #       format: date
+    #       description: Voucher valid from date.
+    #     validTo:
+    #       type: string
+    #       format: date
+    #       description: Voucher valid to date.
+    Insurance:
+      title: Account Insurance
+      type: object
+      required:
+      - typeId
+      #- typeBankCode
+      - validFrom
+      - validTo
+      - status
+      - insuranceId
+      - mandatory
+      properties:
+        typeId:
+          description: 'The id of the insurance type (CATALOG: INSURANCETYPES)'
+          type: integer
+          format: int32
+          x-asd-attribute: null
+          x-catalog: INSURANCETYPES
+          x-example: ''
+        variantId:
+          description: 'The id of the insurance type (CATALOG: INSURANCETYPEVARIANT)'
+          type: integer
+          format: int32
+          x-asd-attribute: null
+          x-catalog: INSURANCETYPEVARIANT
+          x-example: ''
+        # typeBankCode:
+        #   description: The RBCZ code of the insurance type; not so important for FE
+        #   type: string
+        #   x-asd-attribute: null
+        #   x-example: ''
+        validFrom:
+          description: The start date of the validity of this definition
+          type: string
+          format: date
+          x-asd-attribute: null
+          x-example: ''
+        validTo:
+          description: The end date of the validity of this definition (inclusive)
+          type: string
+          format: date
+          x-asd-attribute: null
+          x-example: ''
+        status:
+          description: The status of the definition
+          type: string
+          enum:
+          - ACTIVE
+          - FUTURE
+          x-asd-attribute: null
+          x-example: ''
+        # insuranceId:
+        #   description: The unique bank reference id of this definition (needed for
+        #     cancelling future ones)
+        #   type: string
+        #   x-asd-attribute: null
+        #   x-example: ''
+        # cmsPathId:
+        #   description: 'Id of banner path (CATALOG: CMSPath)'
+        #   type: string
+        #   example: 23
+        mandatory:
+          #description: 'MANDATORY flag of the insurance type variant(CATALOG: INSURANCETYPEVARIANT)'
+          description: If insurance is mandatory
+          type: boolean
+          example: false
+    PriceProgram:
+      title: Price program description
+      type: object
+      required:
+      - priceProgramCode
+      - validFrom
+      - validTo
+      properties:
+        priceProgramCode:
+          description: 'The code of the price program (CATALOG: PRICEPROGRAM)'
+          type: string
+          x-asd-attribute: null
+          x-catalog: PRICEPROGRAM
+          x-example: 21
+        validFrom:
+          description: The price program is valid from
+          type: string
+          format: date
+          x-asd-attribute: null
+          x-example: '2016-05-05'
+        validTo:
+          description: The price program is valid to
+          type: string
+          format: date
+          x-asd-attribute: null
+          x-example: '2016-05-04'
+    CurrencyFolder:
+      title: Account currency folder info
+      description: Contains information about account currency folder with balance
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/CurrencyFolderBase'
+      properties:
+        balances:
+          description: 'The balance (CATALOG: AccountBalanceTypes). Use AVAILABLE_BALANCE
+            as default balance type if not specified.'
+          type: object
+          x-asd-attribute: null
+          x-catalog: AccountBalanceTypes
+          x-example: ACTUAL_BALANCE
+          additionalProperties:
+            type: number
+            format: decimal
+            x-asd-attribute: null
+            x-example: 123456.5
+    CurrencyFolderBase:
+      title: Basic account currency folder info
+      description: Contains information about account currency folder
+      type: object
+      required:
+      - currency
+      - status
+      properties:
+        currency:
+          #description: The currency of the currency folder
+          type: string
+          x-asd-attribute: null
+          x-example: CZK
+        status:
+          description: 'CATALOG: CURRENCYFOLDERSTATUS'
+          type: string
+          x-asd-attribute: null
+          x-catalog: CURRENCYFOLDERSTATUS
+          x-example: ACTIVE
+    InterestRateTier:
+      description: Interest rate with its boundaries for basic and bonus rate
+      type: object
+      required:
+      - balanceRange
+      - baseRate
+      - sumOfRates
+      properties:
+        balanceRange:
+          type: object
+          required:
+          - from
+          properties:
+            from:
+              type: number
+              example: 0
+              description: The lower boundary of the interest rate tier.
+            to:
+              type: number
+              example: 10000
+              description: The upper boundary of the interest rate tier
+        baseRate:
+          type: number
+          format: decimal
+          description: Decimal point number representing the rate.
+          example: 1.0
+        sumOfRates:
+          type: number
+          format: decimal
+          description: sum of basic and bonus rate
+          example: 4.5
+        bonusRate:
+          type: number
+          format: decimal
+          description: Decimal point number representing the rate.
+          example: 3.5
+    AccountsOverviewResponse:
+      title: Accounts overview response
+      type: object
+      required:
+      - id
+      - preferred
+      - friendlyName
+      #- defaultFriendlyName
+      - accountNumber
+      - bankClearingCode
+      - clientId
+      - clientName
+      - allowInstantPayment
+      #- allowInterbankPayment
+      properties:
+        id:
+          description: Unique account id
+          type: integer
+          format: int64
+          x-asd-attribute: null
+          x-example: 3
+        clientId:
+          $ref: '#/components/schemas/ClientId'
+        clientName:
+          description: Client's name
+          type: string
+          example: Michal Kostka
+        accountName:
+          description: The account name
+          type: string
+          x-asd-attribute: null
+          x-example: ''
+        preferred:
+          description: Is this account preferred/main
+          type: boolean
+          x-asd-attribute: null
+          x-example: true
+        friendlyName:
+          description: The custom account name (set by the current user or generated
+            by system)
+          type: string
+          x-asd-attribute: null
+          x-example: Běžný osobní­ 6760653036
+        # defaultFriendlyName:
+        #   description: The default custom account name
+        #   type: string
+        #   x-asd-attribute: null
+        #   x-example: Běžný osobní­ 6760653036
+        accountNumber:
+          description: The account number without prefix in czech format
+          type: string
+          x-asd-attribute: null
+          x-example: 6760653036
+        accountNumberPrefix:
+          description: The account number prefix of account in czech format
+          type: string
+          x-asd-attribute: null
+          x-example: ''
+        iban:
+          description: The account number in IBAN format
+          type: string
+          x-asd-attribute: null
+          x-example: CZ1155000000006760653036
+        bankClearingCode:
+          description: Bank code (kód banky)
+          type: string
+          x-asd-attribute: null
+          x-example: 5500
+        bankBicCode:
+          #description: The bank BIC (SWIFT) code
+          type: string
+          x-asd-attribute: null
+          x-example: RZBCCZPP
+        mainCurrency:
+          description: e.g. CZK, EUR, USD
+          #'The main currency (CATALOG: CURRENCIES)'
+          type: string
+          minLength: 3
+          maxLength: 3
+          x-asd-attribute: null
+          x-catalog: CURRENCIES
+          x-example: CZK
+        type:
+          description: 'The account type: CURRENT, SAVINGS, TERM (term deposit)'
+          type: string
+          x-asd-attribute: null
+          x-example: CURRENT
+        # specialAccountType:
+        #   description: 'The special account type: TIED, HEDGING, ESCROW, PROTECTED'
+        #   type: string
+        #   enum:
+        #   - TIED
+        #   - ESCROW
+        #   - HEDGING
+        #   - PROTECTED
+        #   example: TIED
+        currencyFolders:
+          description: The available currency folders information. Maps currency to
+            description of currency folder.
+          type: object
+          x-example: CZK
+          additionalProperties:
+            $ref: '#/components/schemas/CurrencyFolder'
+        allowInstantPayment:
+          description: Account supports instant payments.
+          type: boolean
+        # allowInterbankPayment:
+        #   description: Flag to indicate that this account can be used for interbank
+        #     (outside RBCZ) payments. This flag is set only from /accounts/suggest,
+        #     otherwise is false.
+        #   type: boolean
+        terminationRequestDate:
+          description: Date when the termination request was submitted.
+          type: string
+          format: date
+    ClientId:
+      description: Unique client id
+      type: integer
+      format: int64
+      x-asd-attribute: CLI1
+      x-example: 2
+    BulkCatalogValuesResponse:
+      title: Catalog values response
+      description: Catalog values response contains request params and catalog values
+      type: object
+      properties:
+        catalogCode:
+          description: Code of the catalog, defined in request
+          type: string
+          example: PRODUCT_TYPE
+        #context:
+        #  description: The name of context that specify special catalog handling.
+        #    Defined in request
+        #  type: string
+        #  example: debitcardsearch
+        #order:
+        #  description: Name of column for ordering. Defined in request
+        #  type: string
+        #additionalAttributes:
+        #  description: Included additional params in result, defined in request
+        #  type: boolean
+        #translatedTextAttributes:
+        #  description: Translated additional text attributes, defined in request
+        #  type: boolean
+        #language:
+        #  description: Language used for sorting actual catalog, defined in request
+        #  type: string
+        #  example: en
+        #params:
+        #  description: Additional params used for filtering in catalog. Defined in
+        #    request
+        #  type: object
+        #  additionalProperties:
+        #    type: string
+        values:
+          #description: Maps catalog value to object describing the value.
+          type: object
+          x-example: CA
+          additionalProperties:
+            $ref: '#/components/schemas/CatalogValueResponse'
+    CatalogValueResponse:
+      title: Catalog value response
+      type: object
+      required:
+      - code
+      - texts
+      #- active
+      properties:
+        code:
+          description: Catalog code.
+          type: string
+          x-asd-attribute: null
+          x-example: CA
+        #active:
+        #  description: Status of the catalog entry.
+        #  type: boolean
+        #  x-asd-attribute: null
+        #  x-example: true
+        texts:
+          description: Localized values of the catalog entry.
+          type: object
+          x-example: en
+          additionalProperties:
+            type: string
+            x-asd-attribute: null
+            x-example: Current Account
+    BulkCatalogValuesRequest:
+      title: request for catalog values
+      type: object
+      required:
+      - catalogCode
+      properties:
+        catalogCode:
+          description: Code to be translated
+          type: string
+          example: PRODUCT_TYPE
+        #context:
+        #  description: The name of context that specify special catalog handling (i.e.
+        #    filtering catalog values for certain screen)
+        #  type: string
+        #  example: debitcardsearch
+        #order:
+        #  description: Name of column for ordering.
+        #  type: string
+        #additionalAttributes:
+        #  description: Include additional params in result
+        #  type: boolean
+        #translatedTextAttributes:
+        #  description: Translate additional text attributes
+        #  type: boolean
+        #language:
+        #  description: Language for sorting actual catalog
+        #  type: string
+        #  example: en
+        #params:
+        #  description: Additional params for filtering in catalog. Keys are validated
+        #    against the names and types of the catalog.
+        #  type: object
+        #  additionalProperties:
+        #    type: string
+    UserInfoResponse:
+      title: Information about currently logged user
+      type: object
+      required:
+      - user
+      - defaultLanguage
+      - isClient
+      #- logoutUrl
+      #- clientPartyId
+      #- userClientSettings
+      #- clientUserBlocked
+      #- canActivateMobileToken
+      properties:
+        user:
+          $ref: '#/components/schemas/UserInfoResponseUser'
+        defaultLanguage:
+          description: default user language set in the UDEBS
+          type: string
+          example: cz
+        isClient:
+          description: true if user is client
+          type: boolean
+          example: true
+        #isRSTSClient:
+          #description: true if user is a RSTS client
+          #type: boolean
+          #example: true
+        #termDepositDealingSupport:
+          #description: true if user has support for term deposit dealing and we should
+          #  call Crafol on term-deposit list etc.
+          #type: boolean
+          #example: true
+        #logoutUrl:
+          #description: Url to which user should be redirected to upon logout
+          #type: string
+          #example: https://online.rb/logout
+        #clientPartyId:
+          #description: client's party ID
+          #type: string
+          #example: '23432423342'
+        #operatorId:
+          #description: Party ID of the in On-Behalf mode. Parameter is returned only
+          #  in On-Behalf/Passive mode.
+          #type: string
+          #example: cza1234e
+        #authMethodCodes:
+          #description: Short codes of used authentication methods (Methods are listed
+          #  in GAAS table AS_SecurityMethod).
+          #type: array
+          #items:
+          #  type: string
+          #  description: authentication method short code
+          #  example: LN_MTOKEN
+        #userClientSettings:
+          #$ref: '#/components/schemas/UserClientSettings'
+        #dashboardShortcutsVisibility:
+          #$ref: '#/components/schemas/DashboardShortcutsVisibility'
+        #pilotFeatures:
+          #type: array
+          #items:
+            #$ref: '#/components/schemas/PilotFeatureInfo'
+        #clientUserBlocked:
+          #description: describe if user is blocked in client context
+          #type: boolean
+        limitManagementAvailable:
+          description: Indicates if the user can manage their total anti-fraud limit for all payments made through digital channels (internet banking, mobile banking) within one day. When true, the user has permissions to modify this daily spending limit.
+          type: boolean
+        #canActivateMobileToken:
+          #description: true if the user is allowed to activate a mobile token in IBS
+          #  (no matter what is the value of system parameter IBS.MTOKEN.ACTIVATION.DISABLED)
+          #type: boolean
+    UserClientSettings:
+      type: object
+      properties:
+        pageSize:
+          description: Number of data items on single page
+          type: number
+          enum:
+          - 15
+          - 30
+          - 50
+          example: 15
+        paymentRepetitionDays:
+          description: Number of days for attempts to pay
+          type: integer
+          format: int32
+          example: 5
+        dashboardShortcuts:
+          description: boolean value for visibility of dashboard shortcuts
+          type: boolean
+          example: true
+        defaultAlertChannel:
+          description: This is user preferred channel for sending one-off alerts.
+          x-catalog: CHANNELSONEOFF.
+          type: integer
+          format: int64
+          example: 2
+        recipients:
+          description: Flag if recipient functionality is enabled
+          type: boolean
+          example: true
+        recipientView:
+          description: Tab shown at payment recipient component
+          type: string
+          enum:
+          - RECIPIENTS
+          - TEMPLATES
+          - OWN_ACCOUNTS
+    PilotFeatureInfo:
+      description: Pilot feature in which the user is part of
+      type: object
+      required:
+      - pilotFeature
+      - enabled
+      properties:
+        pilotFeature:
+          $ref: '#/components/schemas/PilotFeatureEnum'
+        enabled:
+          description: If the user is activated for the given pilot or not
+          type: boolean
+          example: true
+    DashboardShortcutsVisibility:
+      description: |-
+        Boolean flags indicating which dashboard shortcuts should be visible.
+        Present only for clients with corp/micro dashboard and dashboard shortcuts on.
+      properties:
+        listOfCorpApplications:
+          description: visibility of link to List of funding applications
+          type: boolean
+          example: true
+        newCoprApplication:
+          description: visibility of link to New funding application
+          type: boolean
+          example: true
+    UserInfoResponseUser:
+      description: currently logged user
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/SimpleUserInfo'
+      - required:
+        - loginName
+        properties:
+          loginName:
+            description: login name of the user
+            type: string
+            example: '23432423342'
+          birthDate:
+            description: date of birth
+            type: string
+            format: date
+            example: '2000-10-10'
+          #sessionInfo:
+          #  description: information about user's session
+          #  type: object
+          #  required:
+          #  - id
+          #  - expirationTime
+          #  - authenticationTime
+          #  properties:
+          #    id:
+          #      description: the id of a session in an external authentication system
+          #        (GAAS)
+          #      type: string
+          #      example: '23432423342'
+          #    expirationTime:
+          #      description: user`s token expiration time
+          #      format: date-time
+          #     example: '2016-06-08T09:47:53.882'
+          #     authenticationTime:
+          #      description: time of the user`s last login
+          #      format: date-time
+          #      example: '2016-06-08T09:47:53.882'
+    SimpleUserInfo:
+      description: basic information about currently logged user
+      type: object
+      required:
+      - userId
+      - title
+      - firstName
+      - lastName
+     # - partyId
+      properties:
+        # userId:
+        #   description: ID of the user
+        #   type: integer
+        #   format: int64
+        #   example: '123'
+        title:
+          description: title of the user
+          type: string
+          example: Ing.
+        firstName:
+          description: first name of the user
+          type: string
+          example: Martin
+        lastName:
+          description: last name of the user
+          type: string
+          example: Novak
+        #partyId:
+        #  description: user's party ID
+        #  type: string
+        #  example: '23432423342'
+    PilotFeatureEnum:
+      description: Feature as defined in pilottestusers codetable - enum may be out
+        of date
+      type: string
+      enum:
+      - ASYNC_WEBSOCKET
+      - SAFE_MODE
+      - CLFE
+      - DEFERRED_PAYMENTS
+      - INDIVIDUAL_QUOTATION
+      - VIDEO_CALL
+      - PAC_QR_ONLINE
+      - PAC_QR_OFFLINE
+      - ROBOT
+    GetContactsForClientAndUserResponse:
+      title: Get contacts for client and user response
+      type: object
+      properties:
+        addresses:
+          description: ''
+          type: array
+          items:
+            $ref: '#/components/schemas/contactAddress'
+        emails:
+          description: ''
+          type: array
+          items:
+            $ref: '#/components/schemas/contactEmail'
+        phones:
+          description: ''
+          type: array
+          items:
+            $ref: '#/components/schemas/contactPhone'
+      required:
+      - addresses
+      - emails
+      - phones
+    contactPhone:
+      description: contact phone
+      properties:
+        #id:
+        #  description: the ID of phone contact
+        #  type: string
+        #  example: 201
+        contact:
+          description: the phone contact
+          type: string
+          example: 444222111
+        #clientPreferred:
+        #  description: if this phone is preferred by client
+        #  type: boolean
+        #  example: true
+        #userPreferred:
+        #  description: if this phone is preferred by user
+        #  type: boolean
+        #  example: true
+        type:
+          description: MOBILE_NUMBER, FAX_NUMBER, LANDLINE_NUMBER
+          type: string
+          example: MOBILE_NUMBER
+        name:
+          description: contact name
+          type: string
+          example: Michal Retail
+        #partyId:
+        #  description: partyId of the owner of contact (client,user)
+        #  type: string
+        #  example: extUser123
+        #contactOwner:
+        #  $ref: '#/components/schemas/ContactOwner'
+      required:
+      - id
+      - type
+      #- partyId
+      #- contactOwner
+    contactAddress:
+      description: contact address
+      properties:
+        # id:
+        #   description: the unique ID of address contact
+        #   type: string
+        #   example: 101
+        #clientPreferred:
+        #  description: if this address is preferred by client
+        #  type: boolean
+        #  example: false
+        #userPreferred:
+        #  description: if this address is preferred by user
+        #  type: boolean
+        #  example: false
+        addressee:
+          description: full name
+          type: string
+        #specification:
+        #  description: the detail of specification
+        #  type: string
+        street:
+          #description: the street
+          type: string
+          example: Hvezdova
+        number:
+          #description: the number
+          type: string
+          example: 127
+        city:
+          #description: the city
+          type: string
+          example: Prague
+        postalCode:
+          #description: the postal code
+          type: string
+          example: 14000
+        country:
+          description: 'ISO format, e.g.: CZ'
+          type: string
+          example: CZ
+        type:
+          description: type of address
+          type: string
+          enum:
+          - PERMANENT
+          - CONTACT
+          - CARD_HOLDER
+          - ACCOUNT_OWNER
+          - CONTACT2
+          - CONTACT3
+          - CONTACT4
+          - CONTACT5
+          - CONTACT6
+          - CONTACT7
+          - CONTACT8
+          - CONTACT9
+        #partyId:
+        #  description: partyId of the owner of contact (client,user)
+        #  type: string
+        #  example: extUser123
+        #contactOwner:
+        #  $ref: '#/components/schemas/ContactOwner'
+      required:
+      - id
+      #- partyId
+      #- contactOwner
+    contactEmail:
+      #description: email contact
+      type: object
+      properties:
+        #id:
+        #  description: the ID of email contact
+        #  type: string
+        #  example: 201
+        contact:
+          description: the e-mail adddress
+          type: string
+          example: user@email.com
+        #clientPreferred:
+        #  description: if this e-mail is preferred by client
+        #  type: boolean
+        #  example: false
+        #userPreferred:
+        #  description: if this e-mail is preferred by user
+        #  type: boolean
+        #  example: false
+        name:
+          description: contact name
+          type: string
+          example: Michal Retail
+        #partyId:
+        #  description: partyId of the owner of contact (client,user)
+        #  type: string
+        #  example: extUser123
+        #contactOwner:
+        #  $ref: '#/components/schemas/ContactOwner'
+      required:
+      - id
+      #- partyId
+      #- contactOwner
+    #ContactOwner:
+    #  description: The owner of a contact
+    #  type: string
+    #  enum:
+    #  - CLIENT
+    #  - USER
+    #  - BOTH
+    ClientSegment:
+      type: object
+      required:
+      #- authMethods
+      #- cbsSegmentCode
+      #- cbsSubSegmentCode
+      #- clientBehaviours
+      #- clientCategoryId
+      - clientId
+      - clientName
+      - clientType
+      #- mchCategoryCode
+      #- multicontextClient
+      #- guiSegmentationId
+      #- guiPresentationId
+      - preferred
+      #- signingRoleName
+      #- unbluDefaultNamedArea
+      properties:
+        #accessProfileName:
+          #description: The access profile name
+          #type: string
+        #authMethods:
+          #description: Authentication method
+          #type: array
+          #items:
+            #type: object
+            #properties:
+              #code:
+                #description: the method code (MEK_SMS, MEK_SIM, OEK, SPEK)
+                #type: string
+              #strength:
+                #description: the method strength
+                #type: number
+                #format: int64
+            #required:
+            #- code
+            #- strength
+        #cbsSegmentCode:
+          #description: CbsSegmentCode from table CBSSEGMENTMAPPING
+          #type: string
+        #cbsSubSegmentCode:
+          #description: cbsSubSegmentCode from table CBSSEGMENTMAPPING
+          #type: string
+        #clientBehaviours:
+          #description: Set of client behavior definition
+          #type: array
+          #items:
+            #$ref: '#/components/schemas/ClientBehavior'
+        #clientCategoryId:
+          #description: id of the client category
+          #type: number
+          #format: int64
+        clientId:
+          description: client id. REQUIRED for subsequent calls to get client data.
+          type: number
+          format: int64
+        clientName:
+          description: Full name of the client
+          type: string
+        #clientPartyId:
+          #description: client's party id
+          #type: string
+        clientType:
+          description: 'Type of client: FO - fyzická osoba (individual), PO - podnikatel (business entity), FOP - fyzická osoba podnikatel (individual entrepreneur)'
+          type: string
+        #guiPresentationId:
+          #description: id of value from catalog GUIPresentation
+          #type: integer
+          #format: int32
+        #guiSegmentationId:
+          #description: id of value from catalog GUISegmentation
+          #type: integer
+          #format: int32
+        #isLoggedUser:
+          #description: TRUE if logged user is same as this client (has same partyId)
+          #type: boolean
+        #mchCategoryCode:
+          #description: MCHCategory from table CBSSEGMENTMAPPING
+          #type: string
+        #multicontextClient:
+          #description: Flag if this client represents multicontext or not
+          #type: boolean
+        preferred:
+          description: this client is preferred for the logged user
+          type: boolean
+        #quotedRateEligible:
+          #description: Flag if this client is eligible for quoted rates
+          #type: boolean
+        #signingRoleName:
+          #description: The role of the client for signing
+          #type: string
+        #unbluDefaultNamedArea:
+          #description: Default named area for Unblu chat initialization
+          #type: string
+          #x-catalog: CHATNAMEDAREAS
+    ClientBehavior:
+      description: a definition of client behavior
+      type: object
+      properties:
+        code:
+          description: Behavior code ("CONFIRMACTIVEREQ")
+          type: string
+        enabled:
+          description: true if behavior is enabled
+          type: boolean
+      required:
+      - code
+      - enabled
+  parameters:
+    # CategoriesFilter:
+    #   name: categories
+    #   description: The list of transaction categories to filter
+    #   in: query
+    #   required: false
+    #   schema:
+    #     type: string
+    # NoteFilter:
+    #   name: note
+    #   description: |
+    #     Filter by user keyword in transaction note.
+    #   in: query
+    #   schema:
+    #     type: string
+    #     maxLength: 100
+    #   example: Ná
+    AuthorizationHeader:
+      name: Authorization
+      in: header
+      description: Authorization header contains GAAS OpenID Connect token as bearer
+        token
+      required: true
+      example: Bearer eyJraWQiOiIxIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiJTaWViZWw6MTE0NzI2MSIsImFtciI6WyJNRUtfU01TIl0sInJvbGVzIjpbIk1DSF9DSEFOTkVMX1VTRVIiXSwiaXNzIjoiaHR0cHM6XC9cL3RmaXgxLWdpYi5yYi5jelwvZ2FhcyIsIm5vbmNlIjoiODc0Y2NiNmZiZTJiYmEyZmRhZWZjOTk4YTMzZGZiZTY4NDA3NzE3MDljYzlkODc5Y2RmODI1MGE0Mjg3MGMzZCIsInVpX2xvY2FsZSI6ImNzIGVuIiwidGlkIjoyNTIxNDYsInNpZCI6MTQwMTY4LCJhdXRoX3N0cmVuZ3RoIjo1MCwiYWNjZXNzX3Rva2VuIjoiOEIxOTUxQkE4N0JEMTY3RTgzMDdGQUZBN0I1QjI3Q0M2QjU1QUQ2QThDREU1RTAwNEU2MDhBOTU4RDQzRDQ3MSIsImF1ZCI6Ik1DSDpHSUIiLCJhdXRoX3RpbWUiOjE0ODY3MjkzNDksImV4cCI6MTQ4Njc3MjU0OSwiY2hhbm5lbF9pZCI6NywiaWF0IjoxNDg2NzI5MzUwLCJqdGkiOiIyNTIxNDYifQ.uODuaNpMGURgUzr7W3bFnfguYaTVz-gw39CATt7S0RKbD-25cuPlRgT9RXAYzasTslXFKOoZyzhT4Z9NJFDQoHjL-dlxaRR9ftlyQhn1aK7UGlJpZPBk1jMwQG8RcPgT1_oxhI0uw5QHGzN3yWf5Sk-LDGivBRxi43083V-jeGMGp5Itry3ztYk_zSTuwH8QC-XsCnMOh5FSaiAwVBdD-_0respCqBG4C_T1iDYNPxYNW2kpAfQBzuikHvKWuuTLif4prbc_wIGw6SPzt-pFw-Az6SRttNzwbxMmrzmHDw_PrcSw7xVlNm5kJiCYOrRujzf3zQEnXw565HhyusNq4w
+      schema:
+        type: string
+        pattern: Bearer\s([a-zA-Z0-9\-_]+={0,2}\.[a-zA-Z0-9\-_]+={0,2}\.[a-zA-Z0-9\-_]+={0,2})
+    ClientIdQueryParam:
+      name: clientId
+      #description: Unique identification of the client context
+      in: query
+      required: true
+      x-asd-attribute: CLI1
+      example: 2
+      schema:
+        type: integer
+        format: int32
+    MultiContextClientIdQueryParam:
+      name: clientId
+      #description: |-
+      #  Client id obtained.
+      #  When -1 is specified, we are using multi-context = all allowed clientIds of the user are used. -1 can be used only on endpoints specifically prepared for multi-context, see description on specific endpoints.
+      in: query
+      required: true
+      x-asd-attribute: CLI1
+      example: 2
+      schema:
+        type: integer
+        format: int32

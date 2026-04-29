@@ -1,0 +1,22 @@
+{
+  "clients": [
+    {
+      "clientId": 1001,
+      "clientName": "Martin Novak",
+      "clientType": "FO",
+      "preferred": true
+    },
+    {
+      "clientId": 1002,
+      "clientName": "Novak Consulting s.r.o.",
+      "clientType": "PO",
+      "preferred": false
+    },
+    {
+      "clientId": 1003,
+      "clientName": "Martin Novak - OSVC",
+      "clientType": "FOP",
+      "preferred": false
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "user": {
+    "title": "Mgr.",
+    "firstName": "Petr",
+    "lastName": "Svoboda",
+    "loginName": "99988877",
+    "birthDate": "1972-09-30"
+  },
+  "defaultLanguage": "cz",
+  "isClient": false,
+  "limitManagementAvailable": false
+}
