@@ -13,8 +13,10 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import {
     AjvFilterRegistry,
+    SchemaFilterRegistry,
     ToolRegistry,
     buildAjvFilter,
+    buildSchemaFilter,
     buildToolDefinition,
     executeToolCall,
     parseOpenApiSpec,
@@ -32,13 +34,27 @@ const PORT = Number(process.env.MCP_PORT ?? 3001);
 const HOST = process.env.MCP_HOST ?? "127.0.0.1";
 const MCP_PATH = "/mcp";
 
+// Which response filter to apply to tool calls.
+//   "ajv"    → AJV-based filter (buildAjvFilter / AjvFilterRegistry)
+//   "legacy" → original allowedFields filter (buildSchemaFilter / SchemaFilterRegistry)
+//   "none"   → no filtering, return the upstream payload as-is
+type FilterKind = "ajv" | "legacy" | "none";
+const FILTER_KIND: FilterKind = parseFilterKind(process.env.MCP_FILTER);
+
+function parseFilterKind(value: string | undefined): FilterKind {
+    if (value === undefined || value === "") return "ajv";
+    if (value === "ajv" || value === "legacy" || value === "none") return value;
+    throw new Error(`Invalid MCP_FILTER='${value}'. Expected one of: ajv, legacy, none.`);
+}
+
 async function main(): Promise<void> {
     const specText = await readFile(SPEC_PATH, "utf8");
     const spec = await parseOpenApiSpec(specText);
 
     const tools: Tool[] = [];
     const toolRegistry = new ToolRegistry();
-    const filterRegistry = new AjvFilterRegistry();
+    const ajvFilterRegistry = new AjvFilterRegistry();
+    const legacyFilterRegistry = new SchemaFilterRegistry();
 
     for (const endpoint of spec.endpoints) {
         const toolDef = buildToolDefinition(endpoint);
@@ -50,8 +66,12 @@ async function main(): Promise<void> {
             ...(toolDef.outputSchema ? { outputSchema: toolDef.outputSchema as Tool["outputSchema"] } : {}),
         });
 
-        const filter = buildAjvFilter({ endpoint, backend: BACKEND, protocol: PROTOCOL });
-        if (filter) filterRegistry.add(filter);
+        // Build BOTH filters so the active one can be flipped at runtime via MCP_FILTER.
+        const ajvFilter = buildAjvFilter({ endpoint, backend: BACKEND, protocol: PROTOCOL });
+        if (ajvFilter) ajvFilterRegistry.add(ajvFilter);
+
+        const legacyFilter = buildSchemaFilter({ endpoint, backend: BACKEND, protocol: PROTOCOL });
+        if (legacyFilter) legacyFilterRegistry.add(legacyFilter);
     }
 
     const httpClient = buildAxiosHttpClient(BASE_URL);
@@ -75,7 +95,12 @@ async function main(): Promise<void> {
                 };
             }
 
-            const filter = filterRegistry.get(BACKEND, PROTOCOL, name) ?? null;
+            const filter =
+                FILTER_KIND === "ajv"
+                    ? (ajvFilterRegistry.get(BACKEND, PROTOCOL, name) ?? null)
+                    : FILTER_KIND === "legacy"
+                      ? (legacyFilterRegistry.get(BACKEND, PROTOCOL, name) ?? null)
+                      : null;
 
             const result = await executeToolCall({
                 endpoint,
@@ -130,7 +155,7 @@ async function main(): Promise<void> {
 
     httpServer.listen(PORT, HOST, () => {
         console.error(
-            `[rbcz-digi-mcp-sample] listening on http://${HOST}:${PORT}${MCP_PATH} — ${tools.length} tool(s) loaded, backend=${BASE_URL}`,
+            `[rbcz-digi-mcp-sample] listening on http://${HOST}:${PORT}${MCP_PATH} — ${tools.length} tool(s) loaded, backend=${BASE_URL}, filter=${FILTER_KIND}`,
         );
     });
 }

@@ -8,8 +8,9 @@ Minimal MCP server that exercises **`rbcz-digi-openapi-to-mcp-lib`** end-to-end:
   `StreamableHTTPServerTransport`, stateless mode, `enableJsonResponse: true`
   — plain JSON responses, no SSE)
 - routes tool calls through the library's `executeToolCall` orchestrator
-- uses the **AJV-based** response filter (`buildAjvFilter` /
-  `AjvFilterRegistry`) — no validation
+- builds **both** response filters at startup (AJV-based and the original
+  allowedFields walker) so you can switch between them — or disable
+  filtering entirely — via the `MCP_FILTER` env var (no validation is wired)
 - uses **axios** as the HTTP client supplied to `executeToolCall`
 - targets **`rbcz-digi-mock-mch`** (defaults to `http://127.0.0.1:3000`)
 
@@ -29,8 +30,15 @@ PORT=3000 node server.cjs
 cd examples/mcp-sample
 pnpm install
 pnpm build
-pnpm start
+pnpm start                  # default — AJV-based filter
+MCP_FILTER=ajv    pnpm start  # same as default
+MCP_FILTER=legacy pnpm start  # original allowedFields walker
+MCP_FILTER=none   pnpm start  # no filtering, return upstream as-is
 ```
+
+Pick the filter at startup with **`MCP_FILTER`**. The startup log echoes the
+selected filter (`filter=ajv|legacy|none`). Any other value fails fast at
+boot with an explicit error.
 
 The sample resolves the library via `file:../..` — i.e. the lib at the repo
 root. Rebuild the lib (`pnpm build` at the repo root) any time you change its
@@ -44,6 +52,7 @@ The MCP endpoint defaults to `http://127.0.0.1:3001/mcp`. Configure with:
 | `MCH_BASE_URL` | `http://127.0.0.1:3000` | Upstream backend (mock-mch) |
 | `MCP_HOST` | `127.0.0.1` | MCP server bind host |
 | `MCP_PORT` | `3001` | MCP server port |
+| `MCP_FILTER` | `ajv` | Response filter: `ajv` / `legacy` / `none` |
 
 A new `Server` + transport is created **per request** (stateless mode) so
 request IDs cannot collide across concurrent clients.
@@ -57,12 +66,18 @@ request IDs cannot collide across concurrent clients.
    - `buildToolDefinition(endpoint)` → MCP `Tool` advertised in `tools/list`.
    - `buildAjvFilter({ endpoint, backend: "mch", protocol: "mcp" })` →
      registered in an `AjvFilterRegistry` keyed by tool name.
+   - `buildSchemaFilter({ endpoint, backend: "mch", protocol: "mcp" })` →
+     registered in a parallel `SchemaFilterRegistry` (the original
+     allowedFields walker) so `MCP_FILTER` can flip between them at
+     runtime without rebuilding.
 3. On `tools/call`:
-   - look up the `Endpoint` (via `ToolRegistry`) and the AJV filter.
+   - look up the `Endpoint` (via `ToolRegistry`) and pick the filter from
+     the registry that matches `MCP_FILTER` (or `null` when `MCP_FILTER=none`).
    - hand both to `executeToolCall` along with an axios-backed
      `httpClient(plan)`. The library plans the HTTP request, calls axios,
-     applies the AJV filter, wraps arrays for MCP `structuredContent`, and
-     formats the `CallToolResult`.
+     applies the chosen filter (`executeToolCall` discriminates between
+     the two filter shapes internally), wraps arrays for MCP
+     `structuredContent`, and formats the `CallToolResult`.
 
 No catalog translations and no `ResponseValidator` are wired — filtering only,
 per the task brief.
@@ -98,4 +113,6 @@ response for the exact names this spec generates.)
   documented limitation: combinator branches (`allOf` / `oneOf` / `anyOf`)
   are not introspected, so an object whose properties live entirely inside
   an `allOf` (e.g. `UserInfoResponse.user`) gets stripped to an empty
-  object. Documented in the library README under "Known limitation".
+  object. Documented in the library README under "Known limitation". Switch
+  to `MCP_FILTER=legacy` (or `none`) if you need to see what the upstream
+  is actually returning for those schemas.
