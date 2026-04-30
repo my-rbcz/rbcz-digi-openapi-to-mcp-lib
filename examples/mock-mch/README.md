@@ -25,11 +25,17 @@ On startup the server prints every route and the fixtures available for it.
 | `GET /clients` | (none — always the same) | `clients/default.json` |
 | `GET /user/info?clientId=<N>` | `clientId`: `1001` / `2001` / `3001` | `user-info/default.json` / `minimal.json` / `non-client.json` |
 | `GET /contacts?clientId=<N>` | `clientId`: `1001` / `2001` / `3001` | `contacts/default.json` / `minimal.json` / `empty.json` |
-| `POST /catalogs/bulk` | body `[]` / only `Countries` / anything else | `catalogs-bulk/empty.json` / `single.json` / `default.json` |
+| `POST /catalogs/bulk` | every `catalogCode` in body | one fixture per code under `catalogs-bulk/<CODE>.json`, response composed |
 
 Any unrecognised `clientId` on `/user/info` or `/contacts` returns 404. The
 authoritative dispatch table lives at the top of `server.cjs` — keep that
 comment in sync if you add fixtures or routes.
+
+`/catalogs/bulk` is special: it does not pick one fixture, it concatenates
+one fixture per requested `catalogCode`. The available codes are derived
+from `x-catalog` markers in `docs/mch-all.yml`; add a new
+`catalogs-bulk/<CODE>.json` to support a new code. Unknown codes are
+returned with empty `values`.
 
 ## Layout
 
@@ -39,7 +45,7 @@ fixtures/
   clients/             one fixture
   user-info/           three fixtures, picked by clientId
   contacts/            three fixtures, picked by clientId
-  catalogs-bulk/       three fixtures, picked by request body
+  catalogs-bulk/       one fixture per catalogCode; response composed from body
 docs/mch-all.yml       OpenAPI spec these routes correspond to
 ```
 

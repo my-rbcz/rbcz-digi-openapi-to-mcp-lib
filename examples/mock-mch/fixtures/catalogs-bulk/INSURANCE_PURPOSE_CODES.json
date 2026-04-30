@@ -1,0 +1,26 @@
+{
+  "catalogCode": "INSURANCE_PURPOSE_CODES",
+  "values": {
+    "PERSONAL": {
+      "code": "PERSONAL",
+      "texts": {
+        "cz": "Osobni",
+        "en": "Personal"
+      }
+    },
+    "BUSINESS": {
+      "code": "BUSINESS",
+      "texts": {
+        "cz": "Firemni",
+        "en": "Business"
+      }
+    },
+    "FAMILY": {
+      "code": "FAMILY",
+      "texts": {
+        "cz": "Rodinne",
+        "en": "Family"
+      }
+    }
+  }
+}

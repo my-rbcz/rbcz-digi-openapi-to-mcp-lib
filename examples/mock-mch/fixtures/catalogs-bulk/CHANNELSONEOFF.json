@@ -1,0 +1,26 @@
+{
+  "catalogCode": "CHANNELSONEOFF",
+  "values": {
+    "SMS": {
+      "code": "SMS",
+      "texts": {
+        "cz": "SMS",
+        "en": "SMS"
+      }
+    },
+    "EMAIL": {
+      "code": "EMAIL",
+      "texts": {
+        "cz": "E-mail",
+        "en": "Email"
+      }
+    },
+    "PUSH": {
+      "code": "PUSH",
+      "texts": {
+        "cz": "Push notifikace",
+        "en": "Push notification"
+      }
+    }
+  }
+}

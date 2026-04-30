@@ -1,0 +1,26 @@
+{
+  "catalogCode": "INSURANCETYPES",
+  "values": {
+    "LIFE": {
+      "code": "LIFE",
+      "texts": {
+        "cz": "Zivotni pojisteni",
+        "en": "Life insurance"
+      }
+    },
+    "PROPERTY": {
+      "code": "PROPERTY",
+      "texts": {
+        "cz": "Pojisteni majetku",
+        "en": "Property insurance"
+      }
+    },
+    "TRAVEL": {
+      "code": "TRAVEL",
+      "texts": {
+        "cz": "Cestovni pojisteni",
+        "en": "Travel insurance"
+      }
+    }
+  }
+}

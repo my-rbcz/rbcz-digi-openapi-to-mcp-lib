@@ -1,0 +1,26 @@
+{
+  "catalogCode": "DebitCardType",
+  "values": {
+    "DEBIT": {
+      "code": "DEBIT",
+      "texts": {
+        "cz": "Debetni karta",
+        "en": "Debit card"
+      }
+    },
+    "PREPAID": {
+      "code": "PREPAID",
+      "texts": {
+        "cz": "Predplacena karta",
+        "en": "Prepaid card"
+      }
+    },
+    "VIRTUAL": {
+      "code": "VIRTUAL",
+      "texts": {
+        "cz": "Virtualni karta",
+        "en": "Virtual card"
+      }
+    }
+  }
+}

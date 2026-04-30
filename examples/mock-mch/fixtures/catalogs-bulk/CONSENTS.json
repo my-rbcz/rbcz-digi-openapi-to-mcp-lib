@@ -1,0 +1,26 @@
+{
+  "catalogCode": "CONSENTS",
+  "values": {
+    "MARKETING": {
+      "code": "MARKETING",
+      "texts": {
+        "cz": "Marketingovy souhlas",
+        "en": "Marketing consent"
+      }
+    },
+    "DATA_PROCESSING": {
+      "code": "DATA_PROCESSING",
+      "texts": {
+        "cz": "Zpracovani osobnich udaju",
+        "en": "Data processing consent"
+      }
+    },
+    "COOKIES": {
+      "code": "COOKIES",
+      "texts": {
+        "cz": "Cookies",
+        "en": "Cookies"
+      }
+    }
+  }
+}

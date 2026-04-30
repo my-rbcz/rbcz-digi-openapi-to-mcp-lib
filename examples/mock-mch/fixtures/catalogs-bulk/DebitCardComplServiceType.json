@@ -1,0 +1,26 @@
+{
+  "catalogCode": "DebitCardComplServiceType",
+  "values": {
+    "INSURANCE": {
+      "code": "INSURANCE",
+      "texts": {
+        "cz": "Pojisteni",
+        "en": "Insurance"
+      }
+    },
+    "CASHBACK": {
+      "code": "CASHBACK",
+      "texts": {
+        "cz": "Cashback",
+        "en": "Cashback"
+      }
+    },
+    "NOTIFICATIONS": {
+      "code": "NOTIFICATIONS",
+      "texts": {
+        "cz": "Notifikace",
+        "en": "Notifications"
+      }
+    }
+  }
+}

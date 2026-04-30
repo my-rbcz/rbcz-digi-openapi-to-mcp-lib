@@ -1,0 +1,26 @@
+{
+  "catalogCode": "PRICEPROGRAM",
+  "values": {
+    "STANDARD": {
+      "code": "STANDARD",
+      "texts": {
+        "cz": "Standardni program",
+        "en": "Standard program"
+      }
+    },
+    "PREMIUM": {
+      "code": "PREMIUM",
+      "texts": {
+        "cz": "Premium program",
+        "en": "Premium program"
+      }
+    },
+    "GOLD": {
+      "code": "GOLD",
+      "texts": {
+        "cz": "Gold program",
+        "en": "Gold program"
+      }
+    }
+  }
+}

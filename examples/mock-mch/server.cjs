@@ -46,14 +46,19 @@ const FIXTURES_DIR = path.join(__dirname, 'fixtures');
 // -----------------------------------------------------------------------------
 // POST /catalogs/bulk    body = [ { "catalogCode": "..." }, ... ]
 // -----------------------------------------------------------------------------
-//   body is []                                  -> fixtures/catalogs-bulk/empty.json
-//   body asks ONLY for "Countries"              -> fixtures/catalogs-bulk/single.json
-//   anything else (e.g. PRODUCT_TYPE, multiple) -> fixtures/catalogs-bulk/default.json
+//   The response is composed: for every catalogCode in the request body the
+//   server loads fixtures/catalogs-bulk/<catalogCode>.json and concatenates
+//   them into the response array. Unknown codes are returned with empty
+//   `values`. An empty body yields an empty array.
+//
+//   Available catalog codes are exactly the filenames under
+//   fixtures/catalogs-bulk/ (one JSON per code, derived from `x-catalog`
+//   markers in docs/mch-all.yml).
 //
 /*
      curl -X POST http://127.0.0.1:3000/catalogs/bulk \
           -H 'Content-Type: application/json' \
-          -d '[{"catalogCode":"Countries"}]'
+          -d '[{"catalogCode":"COUNTRIES"},{"catalogCode":"CURRENCIES"}]'
  */
  // =============================================================================
 
@@ -79,24 +84,43 @@ function dispatchContacts(query) {
   }
 }
 
-function dispatchCatalogsBulk(rawBody) {
+function buildCatalogsBulk(rawBody) {
   let parsed;
   try {
     parsed = rawBody ? JSON.parse(rawBody) : [];
   } catch {
     parsed = [];
   }
-  if (!Array.isArray(parsed) || parsed.length === 0) return 'empty';
-  const codes = parsed.map((e) => e && e.catalogCode).filter(Boolean);
-  if (codes.length === 1 && codes[0] === 'Countries') return 'single';
-  return 'default';
+  if (!Array.isArray(parsed)) return [];
+
+  const seen = new Set();
+  const codes = [];
+  for (const entry of parsed) {
+    const code = entry && entry.catalogCode;
+    if (typeof code !== 'string' || code.length === 0) continue;
+    if (seen.has(code)) continue;
+    seen.add(code);
+    codes.push(code);
+  }
+
+  return codes.map((code) => {
+    const file = path.join(FIXTURES_DIR, 'catalogs-bulk', `${code}.json`);
+    try {
+      return JSON.parse(fs.readFileSync(file, 'utf8'));
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        return { catalogCode: code, values: {} };
+      }
+      throw err;
+    }
+  });
 }
 
 const ROUTES = [
   { method: 'GET',  path: '/clients',       fixtureDir: 'clients',       dispatch: (q, body) => dispatchClients() },
   { method: 'GET',  path: '/user/info',     fixtureDir: 'user-info',     dispatch: (q, body) => dispatchUserInfo(q) },
   { method: 'GET',  path: '/contacts',      fixtureDir: 'contacts',      dispatch: (q, body) => dispatchContacts(q) },
-  { method: 'POST', path: '/catalogs/bulk', fixtureDir: 'catalogs-bulk', dispatch: (q, body) => dispatchCatalogsBulk(body) },
+  { method: 'POST', path: '/catalogs/bulk', fixtureDir: 'catalogs-bulk', build:    (q, body) => buildCatalogsBulk(body) },
 ];
 
 function sendJson(res, statusCode, body) {
@@ -154,6 +178,17 @@ async function handle(req, res) {
     }
   }
 
+  if (typeof route.build === 'function') {
+    let body;
+    try {
+      body = route.build(parsedUrl.query, rawBody);
+    } catch (err) {
+      return sendJson(res, 500, { error: 'Build Error', message: err.message });
+    }
+    console.log(`[mock] ${req.method} ${req.url} -> 200 (composed from ${route.fixtureDir}/)`);
+    return sendJson(res, 200, body);
+  }
+
   const fixtureName = route.dispatch(parsedUrl.query, rawBody);
 
   if (fixtureName === null) {
@@ -192,7 +227,8 @@ server.listen(PORT, HOST, () => {
   console.log(`rbcz-digi-mock-mch listening on http://${HOST}:${PORT}`);
   console.log('Routes:');
   for (const r of ROUTES) {
-    const fixtures = listAvailableFixtures(r.fixtureDir).join(', ') || '(none)';
-    console.log(`  ${r.method.padEnd(4)} ${r.path.padEnd(18)}  fixtures: ${fixtures}`);
+    const names = listAvailableFixtures(r.fixtureDir).join(', ') || '(none)';
+    const label = typeof r.build === 'function' ? 'catalog codes' : 'fixtures';
+    console.log(`  ${r.method.padEnd(4)} ${r.path.padEnd(18)}  ${label}: ${names}`);
   }
 });

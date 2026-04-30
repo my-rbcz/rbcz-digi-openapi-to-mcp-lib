@@ -1,0 +1,26 @@
+{
+  "catalogCode": "DebitCardComplServiceStatus",
+  "values": {
+    "ACTIVE": {
+      "code": "ACTIVE",
+      "texts": {
+        "cz": "Aktivni",
+        "en": "Active"
+      }
+    },
+    "INACTIVE": {
+      "code": "INACTIVE",
+      "texts": {
+        "cz": "Neaktivni",
+        "en": "Inactive"
+      }
+    },
+    "PENDING": {
+      "code": "PENDING",
+      "texts": {
+        "cz": "Ceka na schvaleni",
+        "en": "Pending"
+      }
+    }
+  }
+}

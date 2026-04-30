@@ -1,0 +1,26 @@
+{
+  "catalogCode": "COUNTRIES",
+  "values": {
+    "CZ": {
+      "code": "CZ",
+      "texts": {
+        "cz": "Ceska republika",
+        "en": "Czech Republic"
+      }
+    },
+    "SK": {
+      "code": "SK",
+      "texts": {
+        "cz": "Slovensko",
+        "en": "Slovakia"
+      }
+    },
+    "DE": {
+      "code": "DE",
+      "texts": {
+        "cz": "Nemecko",
+        "en": "Germany"
+      }
+    }
+  }
+}

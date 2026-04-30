@@ -1,0 +1,26 @@
+{
+  "catalogCode": "AccountBalanceTypes",
+  "values": {
+    "AVAILABLE": {
+      "code": "AVAILABLE",
+      "texts": {
+        "cz": "Disponibilni zustatek",
+        "en": "Available balance"
+      }
+    },
+    "ACCOUNTING": {
+      "code": "ACCOUNTING",
+      "texts": {
+        "cz": "Ucetni zustatek",
+        "en": "Accounting balance"
+      }
+    },
+    "BLOCKED": {
+      "code": "BLOCKED",
+      "texts": {
+        "cz": "Blokovany zustatek",
+        "en": "Blocked balance"
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "catalogCode": "INSURANCETYPEVARIANT",
+  "values": {
+    "BASIC": {
+      "code": "BASIC",
+      "texts": {
+        "cz": "Zakladni",
+        "en": "Basic"
+      }
+    },
+    "EXTENDED": {
+      "code": "EXTENDED",
+      "texts": {
+        "cz": "Rozsirena",
+        "en": "Extended"
+      }
+    },
+    "PREMIUM": {
+      "code": "PREMIUM",
+      "texts": {
+        "cz": "Premium",
+        "en": "Premium"
+      }
+    }
+  }
+}

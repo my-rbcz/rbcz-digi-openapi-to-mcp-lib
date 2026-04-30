@@ -1,0 +1,33 @@
+{
+  "catalogCode": "DebitCardStatus",
+  "values": {
+    "ACTIVE": {
+      "code": "ACTIVE",
+      "texts": {
+        "cz": "Aktivni",
+        "en": "Active"
+      }
+    },
+    "BLOCKED": {
+      "code": "BLOCKED",
+      "texts": {
+        "cz": "Blokovana",
+        "en": "Blocked"
+      }
+    },
+    "EXPIRED": {
+      "code": "EXPIRED",
+      "texts": {
+        "cz": "Expirovana",
+        "en": "Expired"
+      }
+    },
+    "LOST": {
+      "code": "LOST",
+      "texts": {
+        "cz": "Ztracena",
+        "en": "Lost"
+      }
+    }
+  }
+}

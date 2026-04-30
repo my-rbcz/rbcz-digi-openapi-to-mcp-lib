@@ -1,0 +1,33 @@
+{
+  "catalogCode": "CURRENCIES",
+  "values": {
+    "CZK": {
+      "code": "CZK",
+      "texts": {
+        "cz": "Ceska koruna",
+        "en": "Czech koruna"
+      }
+    },
+    "EUR": {
+      "code": "EUR",
+      "texts": {
+        "cz": "Euro",
+        "en": "Euro"
+      }
+    },
+    "USD": {
+      "code": "USD",
+      "texts": {
+        "cz": "Americky dolar",
+        "en": "US Dollar"
+      }
+    },
+    "GBP": {
+      "code": "GBP",
+      "texts": {
+        "cz": "Britska libra",
+        "en": "British Pound"
+      }
+    }
+  }
+}

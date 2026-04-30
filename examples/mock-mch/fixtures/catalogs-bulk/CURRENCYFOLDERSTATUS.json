@@ -1,0 +1,26 @@
+{
+  "catalogCode": "CURRENCYFOLDERSTATUS",
+  "values": {
+    "ACTIVE": {
+      "code": "ACTIVE",
+      "texts": {
+        "cz": "Aktivni",
+        "en": "Active"
+      }
+    },
+    "INACTIVE": {
+      "code": "INACTIVE",
+      "texts": {
+        "cz": "Neaktivni",
+        "en": "Inactive"
+      }
+    },
+    "BLOCKED": {
+      "code": "BLOCKED",
+      "texts": {
+        "cz": "Blokovany",
+        "en": "Blocked"
+      }
+    }
+  }
+}

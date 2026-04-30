@@ -1,0 +1,26 @@
+{
+  "catalogCode": "AccountMovementTypes",
+  "values": {
+    "CREDIT": {
+      "code": "CREDIT",
+      "texts": {
+        "cz": "Pripsani",
+        "en": "Credit"
+      }
+    },
+    "DEBIT": {
+      "code": "DEBIT",
+      "texts": {
+        "cz": "Odepsani",
+        "en": "Debit"
+      }
+    },
+    "FEE": {
+      "code": "FEE",
+      "texts": {
+        "cz": "Poplatek",
+        "en": "Fee"
+      }
+    }
+  }
+}
