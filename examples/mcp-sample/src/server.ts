@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from "node:http";
 
-import axios, { AxiosError } from "axios";
+import axios, { AxiosError, type AxiosInstance } from "axios";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
@@ -20,7 +20,10 @@ import {
     buildSchemaFilter,
     buildToolDefinition,
     executeToolCall,
+    extractCatalogMappings,
     parseOpenApiSpec,
+    type CatalogMappings,
+    type CodeLookup,
     type HttpResponseLike,
     type Logger,
     type ToolRequestPlan,
@@ -67,6 +70,7 @@ async function main(): Promise<void> {
     const ajvFilterRegistry = new AjvFilterRegistry();
     const legacyFilterRegistry = new SchemaFilterRegistry();
     const outputSchemas = new Map<string, unknown>();
+    const catalogMappingsByTool = new Map<string, CatalogMappings>();
     const validator = new ResponseValidator({ logger });
 
     for (const endpoint of spec.endpoints) {
@@ -86,11 +90,23 @@ async function main(): Promise<void> {
 
         const legacyFilter = buildSchemaFilter({ endpoint, backend: BACKEND, protocol: PROTOCOL });
         if (legacyFilter) legacyFilterRegistry.add(legacyFilter);
+
+        // Precompute catalog mappings (path → catalog code) from the response
+        // schema. Used at call time to translate coded values into human text.
+        const responseSchema = ajvFilter?.responseSchema ?? legacyFilter?.responseSchema;
+        if (responseSchema !== undefined && responseSchema !== null) {
+            const mappings = extractCatalogMappings(responseSchema);
+            if (Object.keys(mappings).length > 0) {
+                catalogMappingsByTool.set(toolDef.name, mappings);
+            }
+        }
     }
 
-    const httpClient = buildAxiosHttpClient(BASE_URL);
+    const backendAxios = axios.create({ baseURL: BASE_URL });
+    const httpClient = buildAxiosHttpClient(backendAxios);
+    const fetchCatalogs = buildCatalogFetcher(backendAxios);
 
-    function createMcpServer(): Server {
+    function createMcpServer(lang: LangKey): Server {
         const server = new Server(
             { name: "rbcz-digi-mcp-sample", version: "0.1.0" },
             { capabilities: { tools: { listChanged: false } } },
@@ -116,11 +132,31 @@ async function main(): Promise<void> {
                       ? (legacyFilterRegistry.get(BACKEND, PROTOCOL, name) ?? null)
                       : null;
 
+            // If the response schema references any `x-catalog`, pre-fetch
+            // those catalogs and build a sync CodeLookup keyed by `lang`.
+            // Failure to fetch translations is non-fatal: we log and skip,
+            // returning the un-translated payload.
+            let translations: { mappings: CatalogMappings; lookup: CodeLookup } | null = null;
+            const mappings = catalogMappingsByTool.get(name);
+            if (mappings && Object.keys(mappings).length > 0) {
+                const codes = Array.from(new Set(Object.values(mappings)));
+                try {
+                    const catalogs = await fetchCatalogs(codes);
+                    translations = { mappings, lookup: buildCodeLookup(catalogs, lang) };
+                } catch (err) {
+                    logger.warn(`Catalog fetch failed for tool ${name}; returning untranslated payload`, {
+                        codes,
+                        error: err instanceof Error ? err.message : String(err),
+                    });
+                }
+            }
+
             const result = await executeToolCall({
                 endpoint,
                 args: args as Record<string, unknown>,
                 httpClient,
                 filter,
+                translations,
                 validator,
                 outputSchema: outputSchemas.get(name),
                 logger,
@@ -141,7 +177,10 @@ async function main(): Promise<void> {
         }
 
         // Stateless mode: new Server + transport per request to avoid request-id collisions.
-        const server = createMcpServer();
+        // Capture Accept-Language off the underlying HTTP request so each tool
+        // call can translate catalog values into the caller's preferred language.
+        const lang = pickAcceptLanguage(req.headers["accept-language"]);
+        const server = createMcpServer(lang);
         const transport = new StreamableHTTPServerTransport({
             sessionIdGenerator: undefined,
             enableJsonResponse: true, // DO NOT use SSE response!
@@ -177,8 +216,7 @@ async function main(): Promise<void> {
     });
 }
 
-function buildAxiosHttpClient(baseUrl: string): (plan: ToolRequestPlan) => Promise<HttpResponseLike> {
-    const instance = axios.create({ baseURL: baseUrl });
+function buildAxiosHttpClient(instance: AxiosInstance): (plan: ToolRequestPlan) => Promise<HttpResponseLike> {
     return async (plan) => {
         try {
             const response = await instance.request({
@@ -201,6 +239,125 @@ function buildAxiosHttpClient(baseUrl: string): (plan: ToolRequestPlan) => Promi
             }
             throw err;
         }
+    };
+}
+
+// =============================================================================
+// Translations: catalog fetch + Accept-Language → CodeLookup
+// =============================================================================
+// `executeToolCall` accepts `translations: { mappings, lookup }` where:
+//   - `mappings` is `{ "<dot.path>": "<catalogCode>", ... }` derived from
+//     `x-catalog` markers in the response schema (computed at startup).
+//   - `lookup` is a SYNCHRONOUS `(catalogCode, value) => string`.
+//
+// Because `lookup` is sync and the catalog data lives behind an HTTP API
+// (`POST /catalogs/bulk`), we pre-fetch every catalog needed for the current
+// tool call BEFORE invoking `executeToolCall`, then close over the result.
+// No caching — each tool call fetches afresh, which is fine for an example.
+// =============================================================================
+
+type LangKey = "cz" | "en";
+
+interface CatalogValue {
+    code: string;
+    texts?: Record<string, string>;
+}
+
+interface CatalogPayload {
+    catalogCode: string;
+    values?: Record<string, CatalogValue>;
+}
+
+function buildCatalogFetcher(instance: AxiosInstance): (codes: string[]) => Promise<CatalogPayload[]> {
+    return async (codes) => {
+        if (codes.length === 0) return [];
+        const body = codes.map((catalogCode) => ({ catalogCode }));
+        const response = await instance.post<CatalogPayload[]>("/catalogs/bulk", body, {
+            headers: { "Content-Type": "application/json" },
+        });
+        return Array.isArray(response.data) ? response.data : [];
+    };
+}
+
+/**
+ * Pick a supported text key off the incoming HTTP `Accept-Language` header.
+ * Defaults to "en". The mock catalog texts are keyed by "cz" / "en", so this
+ * also maps the proper ISO tag "cs" onto "cz".
+ */
+function pickAcceptLanguage(rawHeader: string | string[] | undefined): LangKey {
+    const header = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
+    if (!header) return "en";
+    const first = header.split(",")[0]?.trim().toLowerCase();
+    if (!first) return "en";
+    const primary = first.split("-")[0];
+    if (primary === "cz" || primary === "cs") return "cz";
+    return "en";
+}
+
+/**
+ * Turn a bulk-catalog payload into a synchronous `CodeLookup`.
+ *
+ * Input — `catalogs` (verbatim shape as returned by `POST /catalogs/bulk`,
+ * one entry per requested catalog code; this is the same JSON the mock
+ * server in `examples/mock-mch/fixtures/catalogs-bulk/` produces):
+ *
+ *   [
+ *     {
+ *       "catalogCode": "COUNTRIES",
+ *       "values": {
+ *         "CZ": { "code": "CZ", "texts": { "cz": "Ceska republika", "en": "Czech Republic" } },
+ *         "SK": { "code": "SK", "texts": { "cz": "Slovensko",       "en": "Slovakia" } },
+ *         "DE": { "code": "DE", "texts": { "cz": "Nemecko",         "en": "Germany" } }
+ *       }
+ *     },
+ *     {
+ *       "catalogCode": "CURRENCIES",
+ *       "values": {
+ *         "CZK": { "code": "CZK", "texts": { "cz": "Ceska koruna",   "en": "Czech koruna" } },
+ *         "EUR": { "code": "EUR", "texts": { "cz": "Euro",           "en": "Euro" } },
+ *         "USD": { "code": "USD", "texts": { "cz": "Americky dolar", "en": "US Dollar" } }
+ *       }
+ *     },
+ *     {
+ *       "catalogCode": "DebitCardStatus",
+ *       "values": {
+ *         "ACTIVE":  { "code": "ACTIVE",  "texts": { "cz": "Aktivni",   "en": "Active" } },
+ *         "BLOCKED": { "code": "BLOCKED", "texts": { "cz": "Blokovana", "en": "Blocked" } }
+ *       }
+ *     }
+ *   ]
+ *
+ * Input — `lang`: `"cz"` or `"en"` (which key inside `texts` to read).
+ *
+ * Output — `CodeLookup`, i.e. `(catalogName, value) => string`. With the
+ * sample payload above and `lang = "en"`:
+ *   lookup("COUNTRIES",       "CZ")     → "Czech Republic"
+ *   lookup("CURRENCIES",      "CZK")    → "Czech koruna"
+ *   lookup("DebitCardStatus", "ACTIVE") → "Active"
+ *   lookup("COUNTRIES",       "XX")     → "XX"     // unknown value:   pass through
+ *   lookup("UNKNOWN",         "CZ")     → "CZ"     // unknown catalog: pass through
+ *
+ * Same payload with `lang = "cz"`:
+ *   lookup("COUNTRIES",       "CZ")     → "Ceska republika"
+ *   lookup("CURRENCIES",      "EUR")    → "Euro"
+ *   lookup("DebitCardStatus", "BLOCKED") → "Blokovana"
+ *
+ * Per-entry text resolution: `texts[lang]` → `texts.en` → `entry.code`.
+ */
+function buildCodeLookup(catalogs: CatalogPayload[], lang: LangKey): CodeLookup {
+    const byCatalog = new Map<string, Map<string, string>>();
+    for (const cat of catalogs) {
+        if (!cat || typeof cat.catalogCode !== "string" || !cat.values) continue;
+        const valueMap = new Map<string, string>();
+        for (const [code, entry] of Object.entries(cat.values)) {
+            const text = entry?.texts?.[lang] ?? entry?.texts?.en ?? entry?.code;
+            if (typeof text === "string") valueMap.set(code, text);
+        }
+        byCatalog.set(cat.catalogCode, valueMap);
+    }
+    return (catalogName, value) => {
+        const key = String(value);
+        return byCatalog.get(catalogName)?.get(key) ?? key;
     };
 }
 

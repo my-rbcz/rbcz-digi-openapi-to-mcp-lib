@@ -33,12 +33,12 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/ClientSegment'
-                  #currentAuthMethod:
-                    #description: a name of the a user currently used authentication
+                      #currentAuthMethod:
+                      #description: a name of the a user currently used authentication
                       #method
                     #type: string
                 required:
-                - clients
+                  - clients
                 #- currentAuthMethod
       x-unitTests: []
       x-operation-settings:
@@ -54,25 +54,25 @@ paths:
       summary: Get contacts for client and user
       operationId: Get contacts for client and user
       parameters:
-      - name: clientId
-        in: query
-        required: true
-        #description: the selected client context
-        schema:
-          type: number
-          format: double
-      - name: withClientContacts
-        in: query
-        required: false
-        description: alway set to false
-        schema:
-          type: boolean
-      - name: withUserContacts
-        in: query
-        required: false
-        description: alway set to true
-        schema:
-          type: boolean
+        - name: clientId
+          in: query
+          required: true
+          #description: the selected client context
+          schema:
+            type: number
+            format: double
+        - name: withClientContacts
+          in: query
+          required: false
+          description: alway set to false
+          schema:
+            type: boolean
+        - name: withUserContacts
+          in: query
+          required: false
+          description: alway set to true
+          schema:
+            type: boolean
       #- name: phoneType
       #  in: query
       #  required: false
@@ -87,18 +87,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetContactsForClientAndUserResponse'
       x-unitTests:
-      - request:
-          method: GET
-          uri: /contacts?clientId=2&withClientContacts=true&withUserContacts=true&phoneType=MOBILE_NUMBER
-        expectedResponse:
-          x-allowExtraHeaders: true
-          x-bodyMatchMode: RAW
-          x-arrayOrderedMatching: false
-          x-arrayCheckCount: false
-          x-matchResponseSchema: true
-          headers:
-            Content-Type: application/json
-          body: '{    "addresses":        [{ "id":"12k12k21k21k1", "clientPreferred":"true",
+        - request:
+            method: GET
+            uri: /contacts?clientId=2&withClientContacts=true&withUserContacts=true&phoneType=MOBILE_NUMBER
+          expectedResponse:
+            x-allowExtraHeaders: true
+            x-bodyMatchMode: RAW
+            x-arrayOrderedMatching: false
+            x-arrayCheckCount: false
+            x-matchResponseSchema: true
+            headers:
+              Content-Type: application/json
+            body: '{    "addresses":        [{ "id":"12k12k21k21k1", "clientPreferred":"true",
             "userPreferred":"false", "addressee":"Alfons NovĂˇk",            "specification":"u
             panĂ­ NovĂ©",                         "street":"KavÄŤĂ­ hory",            "number":"50",
             "city":"Praha", "postalCode":"14000", "country":"CZ"        }], "emails":        [{
@@ -106,35 +106,35 @@ paths:
             "userPreferred":"false"        }],    "phones": [{ "id":"a89a8080a", "contact":"420123456789",
             "clientPreferred":"true", "userPreferred":"false", "type":"MOBILE_NUMBER"
             }]}'
-        x-testShouldPass: true
-        x-testEnabled: true
-        x-testName: Get contacts for client and user1
-        x-testDescription: |-
-          Get contacts from siebel for client and user.
-          Note: if withClientContacts and withUserContacts are both set to false, then empty collections will be returned.
-          Success Response payload:
-          - `addresses` (Array[], M): addresses collections, always present (even empty)
-              - `id` (String, M): the unique id of address contact
-              - `clientPreferred` (Boolean, O): if this address is preferred by client
-              - `userPreferred` (Boolean, O): if this address is preferred by user
-              - `addressee` (String, O): the addressee
-              - `specification` (String, O): the detail of specification
-              - `street` (String, O): the street
-              - `number` (String, O): the number
-              - `city` (String, O): the city
-              - `postalCode` (String, O): the postal code
-              - `country` (String, O): the country (ISO format, e.g.: CZ), from catalog Countries (see /catalogs/Countries)
-          - `emails` (Array[], M): emails collections, always present (even empty)
-              - `id` (String, M): the unique id of email contact
-              - `contact` (String, O): the e-mail adddress
-              - `clientPreferred` (Boolean, O): if this phone is preferred by client
-              - `userPreferred` (Boolean, O): if this phone is preferred by user
-          - `phones` (Array[], M): phones collections, always present (even empty)
-              - `id` (String, M): the unique id of phone contact
-              - `contact` (String, O): the telephone number
-              - `clientPreferred` (Boolean, O): if this phone is preferred by client
-              - `userPreferred` (Boolean, O): if this phone is preferred by user
-              - `type` (String, M): values from catalog ContactType (see /catalogs/ContactType)
+          x-testShouldPass: true
+          x-testEnabled: true
+          x-testName: Get contacts for client and user1
+          x-testDescription: |-
+            Get contacts from siebel for client and user.
+            Note: if withClientContacts and withUserContacts are both set to false, then empty collections will be returned.
+            Success Response payload:
+            - `addresses` (Array[], M): addresses collections, always present (even empty)
+                - `id` (String, M): the unique id of address contact
+                - `clientPreferred` (Boolean, O): if this address is preferred by client
+                - `userPreferred` (Boolean, O): if this address is preferred by user
+                - `addressee` (String, O): the addressee
+                - `specification` (String, O): the detail of specification
+                - `street` (String, O): the street
+                - `number` (String, O): the number
+                - `city` (String, O): the city
+                - `postalCode` (String, O): the postal code
+                - `country` (String, O): the country (ISO format, e.g.: CZ), from catalog Countries (see /catalogs/Countries)
+            - `emails` (Array[], M): emails collections, always present (even empty)
+                - `id` (String, M): the unique id of email contact
+                - `contact` (String, O): the e-mail adddress
+                - `clientPreferred` (Boolean, O): if this phone is preferred by client
+                - `userPreferred` (Boolean, O): if this phone is preferred by user
+            - `phones` (Array[], M): phones collections, always present (even empty)
+                - `id` (String, M): the unique id of phone contact
+                - `contact` (String, O): the telephone number
+                - `clientPreferred` (Boolean, O): if this phone is preferred by client
+                - `userPreferred` (Boolean, O): if this phone is preferred by user
+                - `type` (String, M): values from catalog ContactType (see /catalogs/ContactType)
       x-operation-settings:
         CollectParameters: false
         AllowDynamicQueryParameters: false
@@ -145,13 +145,13 @@ paths:
       description: Info for currently logged user and given client id, e.g. login name (e.g. klientské číslo)
       summary: Get info about currently logged user
       parameters:
-      - $ref: '#/components/parameters/AuthorizationHeader'
-      - $ref: '#/components/parameters/MultiContextClientIdQueryParam'
-      #- in: query
-        #name: loadRSTSDetail
-        #description: Flag to load RSTS detail
-        #schema:
-          #type: boolean
+        - $ref: '#/components/parameters/AuthorizationHeader'
+        - $ref: '#/components/parameters/MultiContextClientIdQueryParam'
+            #- in: query
+            #name: loadRSTSDetail
+            #description: Flag to load RSTS detail
+            #schema:
+            #type: boolean
           #default: false
       responses:
         '200':
@@ -171,7 +171,7 @@ paths:
       description: To translaste numerical CATALOG codes to human readable values. It support bulk transaction.
       summary: List of catalog values for required catalogs
       parameters:
-      - $ref: '#/components/parameters/AuthorizationHeader'
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
@@ -204,8 +204,8 @@ paths:
       description: List of accounts (current, savings, tied, escrow, hedging, protected) for client id.
       summary: Accounts list
       parameters:
-      - $ref: '#/components/parameters/AuthorizationHeader'
-      - $ref: '#/components/parameters/MultiContextClientIdQueryParam'
+        - $ref: '#/components/parameters/AuthorizationHeader'
+        - $ref: '#/components/parameters/MultiContextClientIdQueryParam'
       #- name: withAccGroups
       #  description: |
       #    List of account groups. If present, only accounts with group within given group list are returned. If account group is not in group list, the account is removed from result. Only one of optional parameters (withAccGroups and withoutAccGroups) is expected. In case both parameters are sent, only withAccGroups is taken into account.
@@ -274,26 +274,26 @@ paths:
       description: Detail (price program/account type, interest rate tiers, conditions for bonus rates, insurrance) of account for given account id and client id.
       summary: Account detail
       parameters:
-      - $ref: '#/components/parameters/AuthorizationHeader'
-      - $ref: '#/components/parameters/ClientIdQueryParam'
-      - name: accountId
-        #description: The id of account
-        in: path
-        required: true
-        x-asd-attribute: null
-        example: 5
-        schema:
-          type: integer
-          format: int64
-      - name: interestRateBonusValidation
-        description: ALWAYS set to true for SAVINGS accounts, and false otherwise.
-        in: query
-        required: false
-        schema:
-          type: boolean
-          example: true (1)
+        - $ref: '#/components/parameters/AuthorizationHeader'
+        - $ref: '#/components/parameters/ClientIdQueryParam'
+        - name: accountId
+          #description: The id of account
+          in: path
+          required: true
           x-asd-attribute: null
-          x-example: true
+          example: 5
+          schema:
+            type: integer
+            format: int64
+        - name: interestRateBonusValidation
+          description: ALWAYS set to true for SAVINGS accounts, and false otherwise.
+          in: query
+          required: false
+          schema:
+            type: boolean
+            example: true (1)
+            x-asd-attribute: null
+            x-example: true
       responses:
         '200':
           description: Successful response with account details
@@ -314,8 +314,8 @@ paths:
       description: List of debit cards for client id.
       summary: Get list of debit cards
       parameters:
-      - $ref: '#/components/parameters/AuthorizationHeader'
-      - $ref: '#/components/parameters/ClientIdQueryParam'
+        - $ref: '#/components/parameters/AuthorizationHeader'
+        - $ref: '#/components/parameters/ClientIdQueryParam'
       responses:
         '200':
           description: List (even empty) is returned
@@ -339,43 +339,43 @@ paths:
           $ref: '#/components/responses/500'
   /debitcards/transactions:
     post:
-      description: List of debit card transactions for the given client id and debit card id. Supports pagination and sorting. 
+      description: List of debit card transactions for the given client id and debit card id. Supports pagination and sorting.
       summary: Get list of debit card transactions
       parameters:
-      - $ref: '#/components/parameters/AuthorizationHeader'
-      - name: p
-        description: Number of requested page (default value is 1)
-        in: query
-        required: false
-        x-asd-attribute: null
-        example: 1
-        schema:
-          type: string
-      - name: s
-        description: Size of page (default value is 20). DO NOT EXCEED 500.
-        in: query
-        required: false
-        x-asd-attribute: null
-        example: 20
-        schema:
-          type: string
-      - name: sort
-        description: 'Sorting attributes, use syntax: attribute,(asc|desc)'
-        in: query
-        required: false
-        x-asd-attribute: null
-        example: AccountingAmount,desc
-        schema:
-          type: string
-          enum:
-          - AccountingAmount,desc
-          - AccountingAmount,asc
-          - AccountingDate,desc
-          - AccountingDate,asc
-          - TransactionAmount,desc
-          - TransactionAmount,asc
-          - TransactionDate,desc
-          - TransactionDate,asc
+        - $ref: '#/components/parameters/AuthorizationHeader'
+        - name: p
+          description: Number of requested page (default value is 1)
+          in: query
+          required: false
+          x-asd-attribute: null
+          example: 1
+          schema:
+            type: string
+        - name: s
+          description: Size of page (default value is 20). DO NOT EXCEED 500.
+          in: query
+          required: false
+          x-asd-attribute: null
+          example: 20
+          schema:
+            type: string
+        - name: sort
+          description: 'Sorting attributes, use syntax: attribute,(asc|desc)'
+          in: query
+          required: false
+          x-asd-attribute: null
+          example: AccountingAmount,desc
+          schema:
+            type: string
+            enum:
+              - AccountingAmount,desc
+              - AccountingAmount,asc
+              - AccountingDate,desc
+              - AccountingDate,asc
+              - TransactionAmount,desc
+              - TransactionAmount,asc
+              - TransactionDate,desc
+              - TransactionDate,asc
       #- $ref: '#/components/parameters/NoteFilter'
       #- $ref: '#/components/parameters/CategoriesFilter'
       responses:
@@ -404,7 +404,7 @@ paths:
               $ref: '#/components/schemas/GetListOfDebitCardTransactionsRequest'
         required: true
 servers:
-- url: http://www.example.com/
+  - url: http://www.example.com/
 components:
   responses:
     '500':
@@ -442,8 +442,8 @@ components:
       description: Stores basic error attributes
       type: object
       required:
-      - status
-      - errorUuid
+        - status
+        - errorUuid
       properties:
         status:
           description: Response HTTP status code
@@ -462,72 +462,72 @@ components:
     ErrorResponse:
       description: Stores validation error attributes, extends ErrorResponseBase
       required:
-      - error
+        - error
       allOf:
-      - $ref: '#/components/schemas/ErrorResponseBase'
-      - type: object
-        properties:
-          error:
-            description: Structured description of the error
-            type: object
-            required:
-            - errorCode
-            properties:
-              errorCode:
-                description: Business error code
-                type: integer
-                x-example: 5000000
-              message:
-                description: Description of business error
-                type: string
-                x-example: Validation errors
-              validationResults:
-                description: List of validation errors found in request data
-                type: array
-                items:
-                  type: object
-                  required:
-                  - attributeCode
-                  - validatorCode
-                  - messageCode
-                  properties:
-                    attributeCode:
-                      description: Identification of attribute on which error was
-                        found
-                      type: string
-                      x-example: amount
-                    validatorCode:
-                      description: Identification of validator. If "validatorCode"
-                        is "RBCZ", then "messageCode" contains the error code form
-                        common catalog list.
-                      type: string
-                      x-example: NotEmptyValidator
-                    messageCode:
-                      description: Identification of problem found
-                      type: string
-                      x-example: validation.error.NotEmpty
-                    params:
-                      description: List of validation parameters; concrete format
-                        of individual parameters depends on validator
-                      type: array
-                      items:
-                        type: object
-                    translatedText:
-                      description: Problem description
-                      type: string
+        - $ref: '#/components/schemas/ErrorResponseBase'
+        - type: object
+          properties:
+            error:
+              description: Structured description of the error
+              type: object
+              required:
+                - errorCode
+              properties:
+                errorCode:
+                  description: Business error code
+                  type: integer
+                  x-example: 5000000
+                message:
+                  description: Description of business error
+                  type: string
+                  x-example: Validation errors
+                validationResults:
+                  description: List of validation errors found in request data
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - attributeCode
+                      - validatorCode
+                      - messageCode
+                    properties:
+                      attributeCode:
+                        description: Identification of attribute on which error was
+                          found
+                        type: string
+                        x-example: amount
+                      validatorCode:
+                        description: Identification of validator. If "validatorCode"
+                          is "RBCZ", then "messageCode" contains the error code form
+                          common catalog list.
+                        type: string
+                        x-example: NotEmptyValidator
+                      messageCode:
+                        description: Identification of problem found
+                        type: string
+                        x-example: validation.error.NotEmpty
+                      params:
+                        description: List of validation parameters; concrete format
+                          of individual parameters depends on validator
+                        type: array
+                        items:
+                          type: object
+                      translatedText:
+                        description: Problem description
+                        type: string
     GetListOfDebitCardTransactionsResponse:
       title: Get list of debit card transactions response
       type: object
       required:
-      - content
-      #- exactTotalElements
-      - last
-      #- totalPages
-      #- totalElements
-      #- size
-      #- number
-      #- first
-      - sort
+        - content
+        #- exactTotalElements
+        - last
+        #- totalPages
+        #- totalElements
+        #- size
+        #- number
+        #- first
+        - sort
       #- numberOfElements
       properties:
         content:
@@ -536,19 +536,19 @@ components:
           items:
             type: object
             required:
-            - cardId
-            - paymentCardNumber
-            - transactionId
-            - accountCurrency
-            - embossName
-            - debitMovementType
-            - transactionDate
-            - accountingDate
-            - transactionAmount
-            - transactionCurrency
-            - accountingAmount
-            - accountingCurrency
-            - movementGroup
+              - cardId
+              - paymentCardNumber
+              - transactionId
+              - accountCurrency
+              - embossName
+              - debitMovementType
+              - transactionDate
+              - accountingDate
+              - transactionAmount
+              - transactionCurrency
+              - accountingAmount
+              - accountingCurrency
+              - movementGroup
             properties:
               cardId:
                 description: ID of debit card (encoded)
@@ -715,8 +715,8 @@ components:
       description: Common object for transferring currency and amount info
       type: object
       required:
-      - amount
-      - currencyId
+        - amount
+        - currencyId
       properties:
         amount:
           type: number
@@ -791,8 +791,8 @@ components:
           #description: GPS coordinates of the shop
           type: object
           required:
-          - latitude
-          - longitude
+            - latitude
+            - longitude
           properties:
             latitude:
               #description: Merchant shop's GPS latitude location
@@ -827,9 +827,9 @@ components:
       title: Get list of debit card transactions request
       type: object
       required:
-      - clientId
-      - accountId
-      - cardId
+        - clientId
+        - accountId
+        - cardId
       properties:
         advancedFilter:
           description: Flag that advanced filtering is applied
@@ -934,29 +934,29 @@ components:
         FULL'
       type: string
       enum:
-      - BASIC
-      - FULL
+        - BASIC
+        - FULL
       example: BASIC
     GetListOfDebitCardsResponse:
       title: Get list of debit cards response
       type: object
       required:
-      - cardId
-      - accountId
-      - cardTypeCode
-      - number
-      - status
-      - preferred
-      - validFrom
-      - validTo
-      - limits
-      - nickName
-      # - defaultNickNameCode
-      # - defaultNickName
-      - imageUrl
-      - loggedUserIsHolder
-      - activationEligibility
-      - cardForm
+        - cardId
+        - accountId
+        - cardTypeCode
+        - number
+        - status
+        - preferred
+        - validFrom
+        - validTo
+        - limits
+        - nickName
+        # - defaultNickNameCode
+        # - defaultNickName
+        - imageUrl
+        - loggedUserIsHolder
+        - activationEligibility
+        - cardForm
       #- way4Card
       properties:
         activationEligibility:
@@ -1084,17 +1084,17 @@ components:
       additionalProperties:
         type: object
         required:
-        - insurancePurposeCode
-        - insuranceProductCode
-        - insuranceMandatory
-        - insuranceDefault
-        - validFrom
-        - validTo
-        - offerFrom
-        - offerTo
+          - insurancePurposeCode
+          - insuranceProductCode
+          - insuranceMandatory
+          - insuranceDefault
+          - validFrom
+          - validTo
+          - offerFrom
+          - offerTo
         properties:
           insurancePurposeCode:
-            description: 'Insurance purpose code (CATALOG: DebitCardComplServiceType)'          
+            description: 'Insurance purpose code (CATALOG: DebitCardComplServiceType)'
             type: string
             x-asd-attribute: null
             x-catalog: DebitCardComplServiceType
@@ -1165,9 +1165,9 @@ components:
       description: Flag if user is eligible to activate card.
       type: string
       enum:
-      - Y
-      - M
-      - N
+        - Y
+        - M
+        - N
       x-example: Y
     CardLimit:
       description: Map of limits. Maps limit type (ATM, POS, GENERAL) to object describing
@@ -1178,17 +1178,17 @@ components:
       additionalProperties:
         type: object
         required:
-        - limitType
-        - maxAmount
-        - currencyId
+          - limitType
+          - maxAmount
+          - currencyId
         properties:
           limitType:
             description: Limit type
             type: string
             enum:
-            - ATM
-            - POS
-            - GENERAL
+              - ATM
+              - POS
+              - GENERAL
             example: GENERAL
           maxAmount:
             description: Limit amount
@@ -1219,14 +1219,14 @@ components:
         items:
           type: object
           required:
-          - insurancePurposeCode
-          - insuranceProductCode
-          - insuranceMandatory
-          - insuranceDefault
-          - validFrom
-          - validTo
-          - offerFrom
-          - offerTo
+            - insurancePurposeCode
+            - insuranceProductCode
+            - insuranceMandatory
+            - insuranceDefault
+            - validFrom
+            - validTo
+            - offerFrom
+            - offerTo
           properties:
             insurancePurposeCode:
               description: 'Insurance purpose code (CATALOG: DebitCardComplServiceType)'
@@ -1300,19 +1300,19 @@ components:
       title: Account detail response
       type: object
       required:
-      - id
-      - preferred
-      - friendlyName
-      #- defaultFriendlyName
-      - accountNumber
-      - bankClearingCode
-      - multiCurrency
-      - status
-      - interestRate
-      - hasAvailableNoticePeriods
-      - canBeTerminatedOnline
-      - limit
-      - mayActivateCurrencyFolder
+        - id
+        - preferred
+        - friendlyName
+        #- defaultFriendlyName
+        - accountNumber
+        - bankClearingCode
+        - multiCurrency
+        - status
+        - interestRate
+        - hasAvailableNoticePeriods
+        - canBeTerminatedOnline
+        - limit
+        - mayActivateCurrencyFolder
       properties:
         id:
           description: account id
@@ -1383,10 +1383,10 @@ components:
           description: 'The special account type: TIED, HEDGING, ESCROW, PROTECTED'
           type: string
           enum:
-          - TIED
-          - ESCROW
-          - HEDGING
-          - PROTECTED
+            - TIED
+            - ESCROW
+            - HEDGING
+            - PROTECTED
           example: TIED
         status:
           description: 'The account status: ACTIVE, TERMINATED, READY_TO_TERMINATE, INACTIVE, UNKNOWN'
@@ -1583,21 +1583,21 @@ components:
     InterestRateTierDto:
       description: Tier rate object representation for account detail
       allOf:
-      - $ref: '#/components/schemas/InterestRateTier'
-      - type: object
-        required:
-        - balance
-        #- displayInDetail
-        properties:
-          balance:
-            description: The balance amount within the tier boundaries.
-            type: number
-            example: 100000
-          # displayInDetail:
-          #   description: |
-          #     A boolean flag that indicates whether the rate object should be displayed in detail table. Is evaluated as true if
-          #   type: boolean
-          #   example: true
+        - $ref: '#/components/schemas/InterestRateTier'
+        - type: object
+          required:
+            - balance
+          #- displayInDetail
+          properties:
+            balance:
+              description: The balance amount within the tier boundaries.
+              type: number
+              example: 100000
+            # displayInDetail:
+            #   description: |
+            #     A boolean flag that indicates whether the rate object should be displayed in detail table. Is evaluated as true if
+            #   type: boolean
+            #   example: true
     CurrencyFolderDetail:
       title: Account currency folder info with full details (balances, interest/charge
         account)
@@ -1605,7 +1605,7 @@ components:
         (balances, interest/charge account)
       type: object
       allOf:
-      - $ref: '#/components/schemas/CurrencyFolder'
+        - $ref: '#/components/schemas/CurrencyFolder'
       properties:
         interestAccount:
           #description: The interest account
@@ -1624,7 +1624,7 @@ components:
       title: Account reference
       type: object
       required:
-      - accountNumber
+        - accountNumber
       properties:
         id:
           description: The id of the account - only filled when the account is a client
@@ -1647,11 +1647,11 @@ components:
       title: Available Account Insurance
       type: object
       required:
-      - typeId
-      - variantId
-      - consentCode
-      - offerFrom
-      - offerTo
+        - typeId
+        - variantId
+        - consentCode
+        - offerFrom
+        - offerTo
       properties:
         typeId:
           description: 'The id of the insurance type (CATALOG: INSURANCETYPES)'
@@ -1676,8 +1676,8 @@ components:
           description: Price of the insurance
           type: object
           required:
-          - amount
-          - currencyId
+            - amount
+            - currencyId
           properties:
             amount:
               description: Price amount
@@ -1706,10 +1706,10 @@ components:
       title: Conditions to get activity bonus
       type: object
       required:
-      - typeValue
-      - targetValue
-      - actualValue
-      - receiveBonus
+        - typeValue
+        - targetValue
+        - actualValue
+        - receiveBonus
       properties:
         typeValue:
           description: Code of condition (DTRCAM = number of payments by card)
@@ -1756,13 +1756,13 @@ components:
       title: Account Insurance
       type: object
       required:
-      - typeId
-      #- typeBankCode
-      - validFrom
-      - validTo
-      - status
-      - insuranceId
-      - mandatory
+        - typeId
+        #- typeBankCode
+        - validFrom
+        - validTo
+        - status
+        - insuranceId
+        - mandatory
       properties:
         typeId:
           description: 'The id of the insurance type (CATALOG: INSURANCETYPES)'
@@ -1799,8 +1799,8 @@ components:
           description: The status of the definition
           type: string
           enum:
-          - ACTIVE
-          - FUTURE
+            - ACTIVE
+            - FUTURE
           x-asd-attribute: null
           x-example: ''
         # insuranceId:
@@ -1822,9 +1822,9 @@ components:
       title: Price program description
       type: object
       required:
-      - priceProgramCode
-      - validFrom
-      - validTo
+        - priceProgramCode
+        - validFrom
+        - validTo
       properties:
         priceProgramCode:
           description: 'The code of the price program (CATALOG: PRICEPROGRAM)'
@@ -1849,7 +1849,7 @@ components:
       description: Contains information about account currency folder with balance
       type: object
       allOf:
-      - $ref: '#/components/schemas/CurrencyFolderBase'
+        - $ref: '#/components/schemas/CurrencyFolderBase'
       properties:
         balances:
           description: 'The balance (CATALOG: AccountBalanceTypes). Use AVAILABLE_BALANCE
@@ -1868,8 +1868,8 @@ components:
       description: Contains information about account currency folder
       type: object
       required:
-      - currency
-      - status
+        - currency
+        - status
       properties:
         currency:
           #description: The currency of the currency folder
@@ -1886,14 +1886,14 @@ components:
       description: Interest rate with its boundaries for basic and bonus rate
       type: object
       required:
-      - balanceRange
-      - baseRate
-      - sumOfRates
+        - balanceRange
+        - baseRate
+        - sumOfRates
       properties:
         balanceRange:
           type: object
           required:
-          - from
+            - from
           properties:
             from:
               type: number
@@ -1922,15 +1922,15 @@ components:
       title: Accounts overview response
       type: object
       required:
-      - id
-      - preferred
-      - friendlyName
-      #- defaultFriendlyName
-      - accountNumber
-      - bankClearingCode
-      - clientId
-      - clientName
-      - allowInstantPayment
+        - id
+        - preferred
+        - friendlyName
+        #- defaultFriendlyName
+        - accountNumber
+        - bankClearingCode
+        - clientId
+        - clientName
+        - allowInstantPayment
       #- allowInterbankPayment
       properties:
         id:
@@ -2082,8 +2082,8 @@ components:
       title: Catalog value response
       type: object
       required:
-      - code
-      - texts
+        - code
+        - texts
       #- active
       properties:
         code:
@@ -2108,7 +2108,7 @@ components:
       title: request for catalog values
       type: object
       required:
-      - catalogCode
+        - catalogCode
       properties:
         catalogCode:
           description: Code to be translated
@@ -2142,9 +2142,9 @@ components:
       title: Information about currently logged user
       type: object
       required:
-      - user
-      - defaultLanguage
-      - isClient
+        - user
+        - defaultLanguage
+        - isClient
       #- logoutUrl
       #- clientPartyId
       #- userClientSettings
@@ -2161,51 +2161,51 @@ components:
           description: true if user is client
           type: boolean
           example: true
-        #isRSTSClient:
-          #description: true if user is a RSTS client
-          #type: boolean
-          #example: true
-        #termDepositDealingSupport:
-          #description: true if user has support for term deposit dealing and we should
-          #  call Crafol on term-deposit list etc.
-          #type: boolean
-          #example: true
-        #logoutUrl:
-          #description: Url to which user should be redirected to upon logout
-          #type: string
-          #example: https://online.rb/logout
-        #clientPartyId:
-          #description: client's party ID
-          #type: string
-          #example: '23432423342'
-        #operatorId:
-          #description: Party ID of the in On-Behalf mode. Parameter is returned only
-          #  in On-Behalf/Passive mode.
-          #type: string
-          #example: cza1234e
-        #authMethodCodes:
-          #description: Short codes of used authentication methods (Methods are listed
-          #  in GAAS table AS_SecurityMethod).
-          #type: array
-          #items:
-          #  type: string
-          #  description: authentication method short code
-          #  example: LN_MTOKEN
-        #userClientSettings:
-          #$ref: '#/components/schemas/UserClientSettings'
-        #dashboardShortcutsVisibility:
-          #$ref: '#/components/schemas/DashboardShortcutsVisibility'
-        #pilotFeatures:
-          #type: array
-          #items:
-            #$ref: '#/components/schemas/PilotFeatureInfo'
-        #clientUserBlocked:
+            #isRSTSClient:
+            #description: true if user is a RSTS client
+            #type: boolean
+            #example: true
+            #termDepositDealingSupport:
+            #description: true if user has support for term deposit dealing and we should
+            #  call Crafol on term-deposit list etc.
+            #type: boolean
+            #example: true
+            #logoutUrl:
+            #description: Url to which user should be redirected to upon logout
+            #type: string
+            #example: https://online.rb/logout
+            #clientPartyId:
+            #description: client's party ID
+            #type: string
+            #example: '23432423342'
+            #operatorId:
+            #description: Party ID of the in On-Behalf mode. Parameter is returned only
+            #  in On-Behalf/Passive mode.
+            #type: string
+            #example: cza1234e
+            #authMethodCodes:
+            #description: Short codes of used authentication methods (Methods are listed
+            #  in GAAS table AS_SecurityMethod).
+            #type: array
+            #items:
+            #  type: string
+            #  description: authentication method short code
+            #  example: LN_MTOKEN
+            #userClientSettings:
+            #$ref: '#/components/schemas/UserClientSettings'
+            #dashboardShortcutsVisibility:
+            #$ref: '#/components/schemas/DashboardShortcutsVisibility'
+            #pilotFeatures:
+            #type: array
+            #items:
+          #$ref: '#/components/schemas/PilotFeatureInfo'
+          #clientUserBlocked:
           #description: describe if user is blocked in client context
           #type: boolean
         limitManagementAvailable:
           description: Indicates if the user can manage their total anti-fraud limit for all payments made through digital channels (internet banking, mobile banking) within one day. When true, the user has permissions to modify this daily spending limit.
           type: boolean
-        #canActivateMobileToken:
+          #canActivateMobileToken:
           #description: true if the user is allowed to activate a mobile token in IBS
           #  (no matter what is the value of system parameter IBS.MTOKEN.ACTIVATION.DISABLED)
           #type: boolean
@@ -2216,9 +2216,9 @@ components:
           description: Number of data items on single page
           type: number
           enum:
-          - 15
-          - 30
-          - 50
+            - 15
+            - 30
+            - 50
           example: 15
         paymentRepetitionDays:
           description: Number of days for attempts to pay
@@ -2243,15 +2243,15 @@ components:
           description: Tab shown at payment recipient component
           type: string
           enum:
-          - RECIPIENTS
-          - TEMPLATES
-          - OWN_ACCOUNTS
+            - RECIPIENTS
+            - TEMPLATES
+            - OWN_ACCOUNTS
     PilotFeatureInfo:
       description: Pilot feature in which the user is part of
       type: object
       required:
-      - pilotFeature
-      - enabled
+        - pilotFeature
+        - enabled
       properties:
         pilotFeature:
           $ref: '#/components/schemas/PilotFeatureEnum'
@@ -2276,49 +2276,49 @@ components:
       description: currently logged user
       type: object
       allOf:
-      - $ref: '#/components/schemas/SimpleUserInfo'
-      - required:
-        - loginName
-        properties:
-          loginName:
-            description: login name of the user
-            type: string
-            example: '23432423342'
-          birthDate:
-            description: date of birth
-            type: string
-            format: date
-            example: '2000-10-10'
-          #sessionInfo:
-          #  description: information about user's session
-          #  type: object
-          #  required:
-          #  - id
-          #  - expirationTime
-          #  - authenticationTime
-          #  properties:
-          #    id:
-          #      description: the id of a session in an external authentication system
-          #        (GAAS)
-          #      type: string
-          #      example: '23432423342'
-          #    expirationTime:
-          #      description: user`s token expiration time
-          #      format: date-time
-          #     example: '2016-06-08T09:47:53.882'
-          #     authenticationTime:
-          #      description: time of the user`s last login
-          #      format: date-time
-          #      example: '2016-06-08T09:47:53.882'
+        - $ref: '#/components/schemas/SimpleUserInfo'
+        - required:
+            - loginName
+          properties:
+            loginName:
+              description: login name of the user
+              type: string
+              example: '23432423342'
+            birthDate:
+              description: date of birth
+              type: string
+              format: date
+              example: '2000-10-10'
+            #sessionInfo:
+            #  description: information about user's session
+            #  type: object
+            #  required:
+            #  - id
+            #  - expirationTime
+            #  - authenticationTime
+            #  properties:
+            #    id:
+            #      description: the id of a session in an external authentication system
+            #        (GAAS)
+            #      type: string
+            #      example: '23432423342'
+            #    expirationTime:
+            #      description: user`s token expiration time
+            #      format: date-time
+            #     example: '2016-06-08T09:47:53.882'
+            #     authenticationTime:
+            #      description: time of the user`s last login
+            #      format: date-time
+            #      example: '2016-06-08T09:47:53.882'
     SimpleUserInfo:
       description: basic information about currently logged user
       type: object
       required:
-      - userId
-      - title
-      - firstName
-      - lastName
-     # - partyId
+        - userId
+        - title
+        - firstName
+        - lastName
+      # - partyId
       properties:
         # userId:
         #   description: ID of the user
@@ -2346,15 +2346,15 @@ components:
         of date
       type: string
       enum:
-      - ASYNC_WEBSOCKET
-      - SAFE_MODE
-      - CLFE
-      - DEFERRED_PAYMENTS
-      - INDIVIDUAL_QUOTATION
-      - VIDEO_CALL
-      - PAC_QR_ONLINE
-      - PAC_QR_OFFLINE
-      - ROBOT
+        - ASYNC_WEBSOCKET
+        - SAFE_MODE
+        - CLFE
+        - DEFERRED_PAYMENTS
+        - INDIVIDUAL_QUOTATION
+        - VIDEO_CALL
+        - PAC_QR_ONLINE
+        - PAC_QR_OFFLINE
+        - ROBOT
     GetContactsForClientAndUserResponse:
       title: Get contacts for client and user response
       type: object
@@ -2375,9 +2375,9 @@ components:
           items:
             $ref: '#/components/schemas/contactPhone'
       required:
-      - addresses
-      - emails
-      - phones
+        - addresses
+        - emails
+        - phones
     contactPhone:
       description: contact phone
       properties:
@@ -2412,8 +2412,8 @@ components:
         #contactOwner:
         #  $ref: '#/components/schemas/ContactOwner'
       required:
-      - id
-      - type
+        - id
+        - type
       #- partyId
       #- contactOwner
     contactAddress:
@@ -2457,22 +2457,23 @@ components:
           description: 'ISO format, e.g.: CZ'
           type: string
           example: CZ
+          x-catalog: COUNTRIES
         type:
           description: type of address
           type: string
           enum:
-          - PERMANENT
-          - CONTACT
-          - CARD_HOLDER
-          - ACCOUNT_OWNER
-          - CONTACT2
-          - CONTACT3
-          - CONTACT4
-          - CONTACT5
-          - CONTACT6
-          - CONTACT7
-          - CONTACT8
-          - CONTACT9
+            - PERMANENT
+            - CONTACT
+            - CARD_HOLDER
+            - ACCOUNT_OWNER
+            - CONTACT2
+            - CONTACT3
+            - CONTACT4
+            - CONTACT5
+            - CONTACT6
+            - CONTACT7
+            - CONTACT8
+            - CONTACT9
         #partyId:
         #  description: partyId of the owner of contact (client,user)
         #  type: string
@@ -2480,7 +2481,7 @@ components:
         #contactOwner:
         #  $ref: '#/components/schemas/ContactOwner'
       required:
-      - id
+        - id
       #- partyId
       #- contactOwner
     contactEmail:
@@ -2514,7 +2515,7 @@ components:
         #contactOwner:
         #  $ref: '#/components/schemas/ContactOwner'
       required:
-      - id
+        - id
       #- partyId
       #- contactOwner
     #ContactOwner:
@@ -2527,56 +2528,56 @@ components:
     ClientSegment:
       type: object
       required:
-      #- authMethods
-      #- cbsSegmentCode
-      #- cbsSubSegmentCode
-      #- clientBehaviours
-      #- clientCategoryId
-      - clientId
-      - clientName
-      - clientType
-      #- mchCategoryCode
-      #- multicontextClient
-      #- guiSegmentationId
-      #- guiPresentationId
-      - preferred
+        #- authMethods
+        #- cbsSegmentCode
+        #- cbsSubSegmentCode
+        #- clientBehaviours
+        #- clientCategoryId
+        - clientId
+        - clientName
+        - clientType
+        #- mchCategoryCode
+        #- multicontextClient
+        #- guiSegmentationId
+        #- guiPresentationId
+        - preferred
       #- signingRoleName
       #- unbluDefaultNamedArea
       properties:
         #accessProfileName:
-          #description: The access profile name
-          #type: string
+        #description: The access profile name
+        #type: string
         #authMethods:
-          #description: Authentication method
-          #type: array
-          #items:
-            #type: object
-            #properties:
-              #code:
-                #description: the method code (MEK_SMS, MEK_SIM, OEK, SPEK)
-                #type: string
-              #strength:
-                #description: the method strength
-                #type: number
-                #format: int64
-            #required:
-            #- code
-            #- strength
+        #description: Authentication method
+        #type: array
+        #items:
+        #type: object
+        #properties:
+        #code:
+        #description: the method code (MEK_SMS, MEK_SIM, OEK, SPEK)
+        #type: string
+        #strength:
+        #description: the method strength
+        #type: number
+        #format: int64
+        #required:
+        #- code
+        #- strength
         #cbsSegmentCode:
-          #description: CbsSegmentCode from table CBSSEGMENTMAPPING
-          #type: string
+        #description: CbsSegmentCode from table CBSSEGMENTMAPPING
+        #type: string
         #cbsSubSegmentCode:
-          #description: cbsSubSegmentCode from table CBSSEGMENTMAPPING
-          #type: string
+        #description: cbsSubSegmentCode from table CBSSEGMENTMAPPING
+        #type: string
         #clientBehaviours:
-          #description: Set of client behavior definition
-          #type: array
-          #items:
-            #$ref: '#/components/schemas/ClientBehavior'
+        #description: Set of client behavior definition
+        #type: array
+        #items:
+        #$ref: '#/components/schemas/ClientBehavior'
         #clientCategoryId:
-          #description: id of the client category
-          #type: number
-          #format: int64
+        #description: id of the client category
+        #type: number
+        #format: int64
         clientId:
           description: client id. REQUIRED for subsequent calls to get client data.
           type: number
@@ -2584,39 +2585,39 @@ components:
         clientName:
           description: Full name of the client
           type: string
-        #clientPartyId:
+          #clientPartyId:
           #description: client's party id
           #type: string
         clientType:
           description: 'Type of client: FO - fyzická osoba (individual), PO - podnikatel (business entity), FOP - fyzická osoba podnikatel (individual entrepreneur)'
           type: string
-        #guiPresentationId:
+          #guiPresentationId:
           #description: id of value from catalog GUIPresentation
           #type: integer
           #format: int32
-        #guiSegmentationId:
+          #guiSegmentationId:
           #description: id of value from catalog GUISegmentation
           #type: integer
           #format: int32
-        #isLoggedUser:
+          #isLoggedUser:
           #description: TRUE if logged user is same as this client (has same partyId)
           #type: boolean
-        #mchCategoryCode:
+          #mchCategoryCode:
           #description: MCHCategory from table CBSSEGMENTMAPPING
           #type: string
-        #multicontextClient:
+          #multicontextClient:
           #description: Flag if this client represents multicontext or not
           #type: boolean
         preferred:
           description: this client is preferred for the logged user
           type: boolean
-        #quotedRateEligible:
+          #quotedRateEligible:
           #description: Flag if this client is eligible for quoted rates
           #type: boolean
-        #signingRoleName:
+          #signingRoleName:
           #description: The role of the client for signing
           #type: string
-        #unbluDefaultNamedArea:
+          #unbluDefaultNamedArea:
           #description: Default named area for Unblu chat initialization
           #type: string
           #x-catalog: CHATNAMEDAREAS
@@ -2631,8 +2632,8 @@ components:
           description: true if behavior is enabled
           type: boolean
       required:
-      - code
-      - enabled
+        - code
+        - enabled
   parameters:
     # CategoriesFilter:
     #   name: categories

@@ -13,6 +13,10 @@ Minimal MCP server that exercises **`rbcz-digi-openapi-to-mcp-lib`** end-to-end:
   filtering entirely — via the `MCP_FILTER` env var (no validation is wired)
 - uses **axios** as the HTTP client supplied to `executeToolCall`
 - targets **`rbcz-digi-mock-mch`** (defaults to `http://127.0.0.1:3000`)
+- **translates `x-catalog`-marked fields** by pre-fetching the relevant
+  catalogs from `POST /catalogs/bulk` per tool call and passing a synchronous
+  `CodeLookup` to `executeToolCall`. The text key is picked from the incoming
+  HTTP `Accept-Language` header (`cs`/`cz` → `cz`, anything else → `en`).
 
 ## Run
 
@@ -73,14 +77,19 @@ request IDs cannot collide across concurrent clients.
 3. On `tools/call`:
    - look up the `Endpoint` (via `ToolRegistry`) and pick the filter from
      the registry that matches `MCP_FILTER` (or `null` when `MCP_FILTER=none`).
-   - hand both to `executeToolCall` along with an axios-backed
-     `httpClient(plan)`. The library plans the HTTP request, calls axios,
-     applies the chosen filter (`executeToolCall` discriminates between
-     the two filter shapes internally), wraps arrays for MCP
-     `structuredContent`, and formats the `CallToolResult`.
+   - if the tool has any `x-catalog` mappings (precomputed at startup via
+     `extractCatalogMappings`), POST the unique catalog codes to
+     `/catalogs/bulk` on the upstream and build a sync `CodeLookup` over the
+     returned `texts[lang]` — `lang` comes from the incoming HTTP
+     `Accept-Language` header (default `en`). Catalog-fetch failures are
+     logged and the call proceeds without translations.
+   - hand the filter and `{ mappings, lookup }` to `executeToolCall` along
+     with an axios-backed `httpClient(plan)`. The library plans the HTTP
+     request, calls axios, applies the chosen filter, runs translations,
+     wraps arrays for MCP `structuredContent`, and formats the
+     `CallToolResult`.
 
-No catalog translations and no `ResponseValidator` are wired — filtering only,
-per the task brief.
+No `ResponseValidator` is wired — filter + translations only.
 
 ## Quick smoke test (curl)
 

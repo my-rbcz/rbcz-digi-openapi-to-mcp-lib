@@ -2457,6 +2457,7 @@ components:
           description: 'ISO format, e.g.: CZ'
           type: string
           example: CZ
+          x-catalog: COUNTRIES
         type:
           description: type of address
           type: string
