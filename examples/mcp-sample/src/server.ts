@@ -55,10 +55,10 @@ function parseFilterKind(value: string | undefined): FilterKind {
 // Minimal console-backed logger so library warnings (e.g. response-validation
 // failures from executeToolCall) actually surface in this sample's output.
 const logger: Logger = {
-    debug: (msg, meta) => console.log(`[mcp-sample][debug] ${msg}`, meta ?? ""),
-    info: (msg, meta) => console.log(`[mcp-sample][info]  ${msg}`, meta ?? ""),
-    warn: (msg, meta) => console.warn(`[mcp-sample][warn]  ${msg}`, meta ?? ""),
-    error: (msg, meta) => console.error(`[mcp-sample][error] ${msg}`, meta ?? ""),
+    debug: (msg: string, meta?: unknown) => console.log(`[mcp-sample][debug] ${msg}`, meta ?? ""),
+    info: (msg: string, meta?: unknown) => console.log(`[mcp-sample][info]  ${msg}`, meta ?? ""),
+    warn: (msg: string, meta?: unknown) => console.warn(`[mcp-sample][warn]  ${msg}`, meta ?? ""),
+    error: (msg: string, meta?: unknown) => console.error(`[mcp-sample][error] ${msg}`, meta ?? ""),
 };
 
 async function main(): Promise<void> {
@@ -139,7 +139,11 @@ async function main(): Promise<void> {
             let translations: { mappings: CatalogMappings; lookup: CodeLookup } | null = null;
             const mappings = catalogMappingsByTool.get(name);
             if (mappings && Object.keys(mappings).length > 0) {
-                const codes = Array.from(new Set(Object.values(mappings)));
+                // `CatalogMappings` is `Record<string, string>`. The cast keeps
+                // `codes` typed as `string[]` even when the lib's type
+                // declarations are missing (in which case `Object.values()`
+                // would otherwise widen to `unknown[]`).
+                const codes: string[] = Array.from(new Set(Object.values(mappings) as string[]));
                 try {
                     const catalogs = await fetchCatalogs(codes);
                     translations = { mappings, lookup: buildCodeLookup(catalogs, lang) };
@@ -355,7 +359,7 @@ function buildCodeLookup(catalogs: CatalogPayload[], lang: LangKey): CodeLookup 
         }
         byCatalog.set(cat.catalogCode, valueMap);
     }
-    return (catalogName, value) => {
+    return (catalogName: string, value: string | number) => {
         const key = String(value);
         return byCatalog.get(catalogName)?.get(key) ?? key;
     };
